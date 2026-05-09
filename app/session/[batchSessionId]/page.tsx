@@ -12,7 +12,7 @@ import { db } from '@/lib/db'
 import { useSessionStore } from '@/store/sessionStore'
 import { TimerRing } from '@/components/shared/TimerRing'
 import { DontForgetModal } from '@/components/shared/DontForgetModal'
-import { cn, formatTime } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import type { Block, BlockProgress } from '@/lib/types'
 
 // ─── Block type config ────────────────────────────────────────────────────────

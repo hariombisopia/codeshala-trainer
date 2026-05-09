@@ -1,5 +1,4 @@
 import { db } from './db'
-import { generateId } from './utils'
 import { makeBlock, p, h, bullets, numbered, code, callout, divider, mcq, trueFalse, activity, faqs } from './seed-helpers'
 import type { CurriculumLevel, Session, Block } from './types'
 

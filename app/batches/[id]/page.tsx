@@ -143,7 +143,6 @@ export default function BatchDetailPage() {
           {batchSessions.map((bs) => {
             const session = sessions.find((s) => s.id === bs.session_id)
             if (!session) return null
-            const counts = stepCounts[bs.id] ?? { total: 0, completed: 0 }
             return (
               <SessionCard
                 key={bs.id}
