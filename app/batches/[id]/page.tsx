@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Play, UserPlus, Users, BarChart3, BookOpen } from 'lucide-react'
+import { ArrowLeft, Play, UserPlus, Users, BarChart3, BookOpen, Trash2 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { SessionCard } from '@/components/session/SessionCard'
 import { ProgressBar } from '@/components/shared/ProgressBar'
@@ -24,6 +24,19 @@ export default function BatchDetailPage() {
   const [stepCounts, setStepCounts] = useState<Record<string, { total: number; completed: number }>>({})
   const [tab, setTab] = useState<Tab>('sessions')
   const [loading, setLoading] = useState(true)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  const handleDeleteBatch = async () => {
+    // Delete all related data in order
+    const bsIds = batchSessions.map(bs => bs.id)
+    await db.block_progress.where('batch_session_id').anyOf(bsIds).delete()
+    await db.attendance.where('batch_session_id').anyOf(bsIds).delete()
+    await db.session_notes.where('batch_session_id').anyOf(bsIds).delete()
+    await db.batch_sessions.where('batch_id').equals(id).delete()
+    await db.students.where('batch_id').equals(id).delete()
+    await db.batches.delete(id)
+    router.push('/batches')
+  }
 
   useEffect(() => {
     async function load() {
@@ -89,7 +102,38 @@ export default function BatchDetailPage() {
           <p className="text-xs text-[#666]">{batch.level}</p>
         </div>
         <StatusBadge status={batch.status} />
+        <button
+          onClick={() => setShowDeleteConfirm(true)}
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 border border-red-200 shrink-0"
+          title="Delete batch"
+        >
+          <Trash2 className="w-4 h-4 text-red-500" />
+        </button>
       </div>
+
+      {/* Delete confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white border border-[#e5e5e5] rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="font-sora font-bold text-[#111] text-lg mb-2">Delete Batch?</h3>
+            <p className="text-[#666] text-sm mb-6">This will permanently delete <span className="text-[#111] font-medium">{batch.name}</span> and all its sessions, students, and progress. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-3 rounded-xl bg-[#f8f8f8] text-[#111] text-sm font-medium min-h-[48px] border border-[#e5e5e5]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteBatch}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-medium min-h-[48px]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progress summary */}
       <div className="bg-[#f8f8f8] border border-[#e5e5e5] rounded-2xl p-4 mb-4">

@@ -147,13 +147,29 @@ export default function ProjectorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [batchSessionId])
 
+  // Keyboard navigation — arrow keys work like a presentation
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault()
+        setCurrentIndex((i) => Math.min(blocks.length - 1, i + 1))
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCurrentIndex((i) => Math.max(0, i - 1))
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [blocks.length])
+
   // BroadcastChannel — receive block changes from trainer
   useEffect(() => {
     try {
       const channel = new BroadcastChannel('codeshala-session')
       channelRef.current = channel
       channel.onmessage = (event) => {
-        if (event.data.type === 'BLOCK_CHANGE' && event.data.batchSessionId === batchSessionId) {
+        if (event.data.type === 'BLOCK_CHANGE') {
           setCurrentIndex(event.data.blockIndex as number)
         }
         if (event.data.type === 'SESSION_COMPLETE') {
@@ -208,7 +224,14 @@ export default function ProjectorPage() {
   }
 
   return (
-    <div className="fixed inset-0 bg-[#0a0a0a] text-white flex flex-col overflow-hidden select-none">
+    <div className="fixed inset-0 bg-[#0a0a0a] text-white flex flex-col overflow-hidden select-none"
+      onClick={(e) => {
+        // Click right half = next, click left half = prev
+        const isRightHalf = e.clientX > window.innerWidth / 2
+        if (isRightHalf) setCurrentIndex((i) => Math.min(blocks.length - 1, i + 1))
+        else setCurrentIndex((i) => Math.max(0, i - 1))
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-8 pt-6 pb-4 border-b border-[#1a1a1a]">
         <div className="flex items-center gap-4">
@@ -245,7 +268,7 @@ export default function ProjectorPage() {
         </div>
         <div className="flex items-center gap-6 text-[#555]">
           <button
-            onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(Math.max(0, currentIndex - 1)) }}
             disabled={currentIndex === 0}
             className="flex items-center gap-2 text-lg hover:text-white disabled:opacity-20 transition-colors min-h-[48px] px-3"
           >
@@ -253,7 +276,7 @@ export default function ProjectorPage() {
           </button>
           <span className="text-[#333] text-lg">{currentIndex + 1}/{blocks.length}</span>
           <button
-            onClick={() => setCurrentIndex(Math.min(blocks.length - 1, currentIndex + 1))}
+            onClick={(e) => { e.stopPropagation(); setCurrentIndex(Math.min(blocks.length - 1, currentIndex + 1)) }}
             disabled={currentIndex === blocks.length - 1}
             className="flex items-center gap-2 text-lg hover:text-white disabled:opacity-20 transition-colors min-h-[48px] px-3"
           >
