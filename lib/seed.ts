@@ -1,5 +1,5 @@
 import { db } from './db'
-import { makeBlock, p, h, bullets, numbered, code, callout, divider, mcq, trueFalse, activity, faqs } from './seed-helpers'
+import { makeBlock, p, h, bullets, numbered, code, callout, divider, mcq, activity, faqs } from './seed-helpers'
 import type { CurriculumLevel, Session, Block } from './types'
 
 const LEVEL_ID = 'level-14d-fixed'
