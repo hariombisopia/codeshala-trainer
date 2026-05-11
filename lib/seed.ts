@@ -2,47 +2,40 @@ import { db } from './db'
 import { makeBlock, p, h, bullets, numbered, code, callout, divider, mcq, trueFalse, activity, faqs } from './seed-helpers'
 import type { CurriculumLevel, Session, Block } from './types'
 
-const LEVEL_ID = 'level-21d-fixed'
-
-// Fixed session IDs for idempotent seeding
-const S = Array.from({ length: 21 }, (_, i) => `session-21d-day${i + 1}`)
+const LEVEL_ID = 'level-14d-fixed'
+const S = Array.from({ length: 14 }, (_, i) => `session-14d-day${i + 1}`)
 
 export async function seedCurriculum(): Promise<void> {
   try {
     await db.transaction('rw', [db.curriculum_levels, db.sessions, db.blocks], async () => {
-      // Re-seed if blocks table is empty (handles migration from old step-based schema)
       const blockCount = await db.blocks.count()
       const existing = await db.curriculum_levels.get(LEVEL_ID)
-
-      if (existing && blockCount > 0) return // already seeded with blocks
+      if (existing && blockCount > 0) return
 
       const NOW = new Date().toISOString()
 
-      // If level exists but no blocks, clear sessions and re-seed everything
       if (existing && blockCount === 0) {
         await db.sessions.where('level_id').equals(LEVEL_ID).delete()
         await db.curriculum_levels.delete(LEVEL_ID)
       }
 
-      const level21D: CurriculumLevel = {
+      const level: CurriculumLevel = {
         id: LEVEL_ID,
-        code: '21D',
-        title: '21-Day Summer Crash Course',
-        description: 'A complete no-code development journey from zero to deployed portfolio in 21 days.',
+        code: '14D',
+        title: '14-Day No-Code Development Crash Course',
+        description: 'Build your first website/PWA without writing code. Using Claude AI, VS Code, Github, and Vercel.',
         order_index: 0,
         badge_color: 'green',
-        total_sessions: 21,
+        total_sessions: 14,
         created_at: NOW,
       }
 
       const sessions: Session[] = buildSessions(NOW)
       const blocks: Block[] = buildAllBlocks()
 
-      if (!blocks || blocks.length === 0) {
-        throw new Error('Block data missing')
-      }
+      if (!blocks || blocks.length === 0) throw new Error('Block data missing')
 
-      await db.curriculum_levels.add(level21D)
+      await db.curriculum_levels.add(level)
       await db.sessions.bulkAdd(sessions)
       await db.blocks.bulkAdd(blocks)
     })
@@ -53,65 +46,32 @@ export async function seedCurriculum(): Promise<void> {
 }
 
 function buildSessions(NOW: string): Session[] {
-  const titles = [
-    'Welcome + Computer Basics + Mindset',
-    'File Management + Browser Mastery',
-    'Logic Thinking + Problem Solving',
-    'Flowcharts + Wireframing on Paper',
-    'Introduction to AI + Claude Basics',
-    'Prompt Engineering — Writing Like a Pro',
-    'Week 1 Review + Quiz + Group Activity',
-    'HTML — Reading and Understanding Code',
-    'CSS — Styling Without Writing It',
-    'VS Code Setup + First File Saved Locally',
-    'Spec Writing — Plan Before You Build',
-    'GitHub — Your First Repository',
-    'Build Portfolio — Hero + About Sections',
-    'Mid-Course Checkpoint + Show and Tell',
-    'Build Portfolio — Skills + Projects Sections',
-    'Contact Section + Mobile Responsiveness',
-    'Polish Day — Fonts, Colors, Animation',
-    'Final GitHub Push + README Writing',
-    'Deployment — Go Live on Cloudflare Pages',
-    'Demo Day Prep — Rehearse Your Presentation',
-    'DEMO DAY — Live Presentations + Certificate',
+  const data = [
+    { title: 'Introduction to No-Code Development', tools: [] },
+    { title: 'Mastering AI Prompting with Claude', tools: ['Claude.ai'] },
+    { title: 'Web Basics + VS Code Setup', tools: ['VS Code'] },
+    { title: 'Problem Identification & Requirements Gathering', tools: ['Claude.ai'] },
+    { title: 'Git, Github & Version Control', tools: ['GitHub', 'VS Code'] },
+    { title: 'Navigation + Hero Section', tools: ['Claude.ai', 'VS Code', 'GitHub'] },
+    { title: 'Forms & User Input', tools: ['Claude.ai', 'VS Code'] },
+    { title: 'Content Sections — Cards, Lists & Data Display', tools: ['Claude.ai', 'VS Code'] },
+    { title: 'Styling, Animations & Responsive Polish', tools: ['Claude.ai', 'VS Code'] },
+    { title: 'Error Handling, Debugging & Code Review', tools: ['VS Code', 'Chrome DevTools'] },
+    { title: 'Final Project Planning & Sprint Setup', tools: ['Claude.ai', 'VS Code'] },
+    { title: 'Core Development Sprint', tools: ['Claude.ai', 'VS Code', 'GitHub'] },
+    { title: 'Testing, Accessibility & Polish', tools: ['VS Code', 'Chrome DevTools'] },
+    { title: 'Vercel Deployment & Launch', tools: ['GitHub', 'Vercel'] },
   ]
 
-  const tools: string[][] = [
-    [],
-    [],
-    [],
-    [],
-    ['Claude.ai'],
-    ['Claude.ai'],
-    [],
-    ['Claude.ai'],
-    ['Claude.ai'],
-    ['VS Code'],
-    ['Claude.ai', 'VS Code'],
-    ['GitHub', 'VS Code'],
-    ['Claude.ai', 'VS Code', 'GitHub'],
-    [],
-    ['Claude.ai', 'VS Code', 'GitHub'],
-    ['Claude.ai', 'VS Code'],
-    ['Claude.ai', 'VS Code'],
-    ['VS Code', 'GitHub'],
-    ['GitHub', 'Cloudflare Pages'],
-    [],
-    ['GitHub', 'Cloudflare Pages'],
-  ]
-
-  const durations = Array.from({ length: 21 }, (_, i) => i === 20 ? 180 : 120)
-
-  return titles.map((title, i) => ({
+  return data.map((d, i) => ({
     id: S[i],
     level_id: LEVEL_ID,
-    title,
-    description: `Day ${i + 1} of the 21-Day Crash Course`,
+    title: d.title,
+    description: `Day ${i + 1} of the 14-Day No-Code Crash Course`,
     session_number: i + 1,
-    duration_minutes: durations[i],
+    duration_minutes: i === 13 ? 180 : 120,
     objectives: [],
-    tools_used: tools[i],
+    tools_used: d.tools,
     outcome: '',
     order_index: i,
     created_at: NOW,
@@ -120,1577 +80,1279 @@ function buildSessions(NOW: string): Session[] {
 
 function buildAllBlocks(): Block[] {
   return [
-    ...day1Blocks(),
-    ...day2Blocks(),
-    ...day3Blocks(),
-    ...day4Blocks(),
-    ...day5Blocks(),
-    ...day6Blocks(),
-    ...day7Blocks(),
-    ...day8Blocks(),
-    ...day9Blocks(),
-    ...day10Blocks(),
-    ...day11Blocks(),
-    ...day12Blocks(),
-    ...day13Blocks(),
-    ...day14Blocks(),
-    ...day15Blocks(),
-    ...day16Blocks(),
-    ...day17Blocks(),
-    ...day18Blocks(),
-    ...day19Blocks(),
-    ...day20Blocks(),
-    ...day21Blocks(),
+    ...day1(), ...day2(), ...day3(), ...day4(), ...day5(),
+    ...day6(), ...day7(), ...day8(), ...day9(), ...day10(),
+    ...day11(), ...day12(), ...day13(), ...day14(),
   ]
 }
 
-// ─── DAY 1: Welcome + Computer Basics + Mindset ───────────────────────────────
-function day1Blocks(): Block[] {
+// ─── DAY 1: Introduction to No-Code Development ───────────────────────────────
+function day1(): Block[] {
   const sid = S[0]
   return [
-    makeBlock(sid, 0, 'intro', 'Welcome to CodeShala!', [
-      h('Day 1 — Welcome + Computer Basics + Mindset'),
-      p('Today you begin a 21-day journey that will take you from zero to a live, deployed portfolio website.'),
-      bullets([
-        'No prior coding experience needed',
-        'You will build real things from Day 1',
-        'Ask questions freely — there are no silly questions here',
-      ]),
-      callout('By the end of 21 days, you will have a live website, a GitHub profile, and real skills.', 'tip'),
-    ], 'Welcome everyone warmly. Ask: who has never touched code before? Celebrate that. Set the tone — this is a safe space.', 10),
+    makeBlock(sid, 0, 'intro', 'Welcome to the 14-Day No-Code Crash Course', [
+      h('Build Your First Website/PWA Without Writing Code'),
+      p('Duration: 14 Days (2–3 hours/day) | Stack: Claude AI, VS Code, Github, Vercel'),
+      p('Final Outcome: A fully deployed Website or PWA live on the internet.'),
+      bullets(['Target: Students (9th grade+) and Professionals', 'Week 1 (Days 1–5): Foundation Training', 'Week 2 (Days 6–10): Guided Development', 'Week 3 (Days 11–14): Final Project']),
+      callout('You will not memorise syntax. You will learn to direct AI to build for you.', 'tip'),
+    ], 'Start with energy. Ask: "How many of you have ever built a website?" Then say: "By Day 14, every single one of you will have a live product on the internet."', 10),
 
-    makeBlock(sid, 1, 'concept', 'How Computers Work', [
-      h('What is a Computer, Really?'),
-      p('A computer is a machine that takes input, processes it, and gives output. That is it.'),
-      bullets([
-        'Input: keyboard, mouse, microphone, camera',
-        'Processing: CPU (the brain) + RAM (short-term memory)',
-        'Storage: Hard drive / SSD (long-term memory)',
-        'Output: screen, speakers, printer',
-      ]),
+    makeBlock(sid, 1, 'concept', 'What is No-Code Development?', [
+      h('Traditional Coding vs No-Code'),
+      p('Analogy: Building a house. Traditional coding is like being a carpenter who crafts each piece of wood from scratch. No-Code is like using pre-made building blocks and having an expert architect (AI) guide you.'),
+      callout('Key Concept: You solve problems and create solutions using AI tools and visual interfaces instead of writing complex code line-by-line.', 'info'),
       divider(),
-      h('Files and Folders'),
-      p('Everything on a computer is a file. Files live in folders. Folders live in drives.'),
-      callout('Think of your computer like a physical office. The hard drive is the filing cabinet. RAM is your desk — things you are working on right now.', 'info'),
-    ], 'Use the whiteboard to draw the input-process-output diagram. Ask students to name examples of each.', 20),
-
-    makeBlock(sid, 2, 'demo', 'Navigating Your Computer', [
-      h('Live Demo: File Explorer / Finder'),
-      numbered([
-        'Open File Explorer (Windows) or Finder (Mac)',
-        'Navigate to the Desktop folder',
-        'Create a new folder called "CodeShala"',
-        'Inside it, create another folder called "Day1"',
-        'Right-click and explore the options available',
+      h('The No-Code Toolkit — Meet Your Team'),
+      bullets([
+        'Claude AI — Your Development Partner: Understands requirements, generates code, explains concepts, debugs issues. Think of it as a senior developer sitting next to you 24/7.',
+        'VS Code — Your Digital Workshop: Stores your code files, lets you view/edit them, connects to Github. Like Microsoft Word, but for code files.',
+        'Github — Your Project Safe: Saves every version of your project, enables backup and collaboration. Like Google Drive + Time Machine for code.',
+        'Vercel — Your Website Launcher: Takes your code from Github and makes it live on the internet. Like a publishing house that prints your book for the world.',
       ]),
-      callout('Every project you build will live in its own folder. Good folder habits now save hours of confusion later.', 'tip'),
-    ], 'Do this on your own screen projected. Go slowly. Wait for students to follow along on their machines.', 15),
+    ], 'Show each tool on screen. Ask if anyone has heard of any of them. Normalise that it\'s okay to know none of them.', 25),
 
-    makeBlock(sid, 3, 'activity', 'Create Your Workspace', [
-      h('Activity: Set Up Your CodeShala Folder'),
-      p('You have 10 minutes to complete this on your own computer.'),
+    makeBlock(sid, 2, 'demo', 'The Complete Workflow', [
+      h('From Idea to Live Website'),
       numbered([
-        'Open File Explorer or Finder',
-        'Go to your Desktop',
-        'Create a folder called "CodeShala"',
-        'Inside it, create 3 folders: "Week1", "Week2", "Week3"',
-        'Inside Week1, create a folder called "Day1"',
+        'Problem Idea (You)',
+        'Requirements (You + Claude)',
+        'Code Generation (Claude)',
+        'Code Organisation (VS Code)',
+        'Version Control (Github)',
+        'Live Website (Vercel)',
       ]),
-      callout('Raise your hand when done. Help your neighbour if they are stuck.', 'tip'),
-    ], 'Walk around the room. Common issue: students creating folders in wrong location. Check that everyone has the right structure before moving on.', 10,
-    { activity_data: activity('Create Your Workspace', 'Create the CodeShala folder structure on your Desktop as shown above.', 10, 'Walk the room. Check folder locations. Help anyone stuck.', 'Every student has a CodeShala/Week1/Week2/Week3/Day1 folder structure on their Desktop.') }),
+      callout('This workflow is what you will repeat for every feature you build in this course.', 'tip'),
+    ], 'Draw this on the whiteboard. Ask students: "Where do you think most of your time will be spent?" Answer: Requirements and testing — not code generation.', 15),
 
-    makeBlock(sid, 4, 'quiz', 'Quick Check', [
-      p('Let us see what you remember from the last 30 minutes.'),
-    ], 'Read the question aloud. Give 30 seconds to think. Then reveal the answer.', 5,
-    { quiz_data: mcq('What does RAM stand for and what does it do?', [
-      { text: 'Random Access Memory — stores data temporarily while the computer is running', correct: true },
-      { text: 'Read And Memorize — helps the computer read files faster' },
-      { text: 'Rapid Action Module — speeds up the processor' },
-      { text: 'Random Application Manager — manages open apps' },
-    ], 'RAM is your computer\'s short-term memory. It holds everything currently open. When you restart, RAM is cleared. That\'s why you save files to the hard drive.') }),
+    makeBlock(sid, 3, 'activity', 'Set Up Your Learning Environment', [
+      h('Hands-on Task: Set Up All 4 Tools'),
+      numbered([
+        'Create a Claude.ai account — https://claude.ai',
+        'Download and install VS Code — https://code.visualstudio.com',
+        'Create a Github account — https://github.com',
+        'Create a Vercel account — https://vercel.com',
+        'Open all 4 tabs/windows simultaneously',
+        'In VS Code, install: Live Server, Prettier, HTML CSS Support, Auto Rename Tag',
+        'Write down: "What excites me most about building without code?"',
+      ]),
+      callout('All 4 tools are free. You will use all of them every day from Day 5 onwards.', 'info'),
+    ], 'Walk around the room. Help anyone stuck on account creation. Common issue: VS Code extension search not finding results — check internet connection.', 30,
+    { activity_data: activity('Set Up Your Learning Environment', 'Create accounts for all 4 tools and install VS Code extensions.', 30, 'Walk the room. Help with account creation. Ensure everyone has VS Code open with extensions installed.', 'All 4 accounts created, VS Code installed with extensions, all tools open and ready.') }),
 
-    makeBlock(sid, 5, 'faq', 'Common Questions', [
-      p('Questions students typically ask on Day 1:'),
-    ], 'Pull up this panel when students ask these questions. You can also proactively address them.', 5,
+    makeBlock(sid, 4, 'quiz', 'Day 1 Knowledge Check', [
+      p('Let\'s see what you remember from today\'s session.'),
+    ], 'Read each question aloud. Give 20 seconds to think. Reveal the answer and explain.', 10,
+    { quiz_data: mcq('What is Github\'s primary role in the no-code workflow?', [
+      { text: 'Writing code for you' },
+      { text: 'Making your website live on the internet' },
+      { text: 'Version control and code storage', correct: true },
+      { text: 'Editing your HTML files' },
+    ], 'Github is your project safe — it stores every version of your code online. Vercel is what makes it live. VS Code is where you edit. Claude writes the code.') }),
+
+    makeBlock(sid, 5, 'faq', 'Day 1 FAQs', [
+      p('Common questions from students on Day 1:'),
+    ], 'Pull up this panel when these questions come up. Address them proactively if you see confusion.', 10,
     { faq_items: faqs([
-      { q: 'Do I need to buy any software?', a: 'No. Everything we use in this course is free. VS Code, GitHub, Claude, and Cloudflare Pages are all free tools.' },
-      { q: 'What if I miss a day?', a: 'Each session builds on the previous one. If you miss a day, review the session notes and ask the trainer to catch you up at the start of the next session.' },
-      { q: 'Is this real coding or just drag and drop?', a: 'You will write real HTML, CSS, and use real developer tools. But we use AI to help generate code, so you focus on understanding and customising rather than memorising syntax.' },
-      { q: 'What computer do I need?', a: 'Any laptop or desktop made in the last 8 years will work. Windows, Mac, or Linux. A phone alone is not enough for this course.' },
+      { q: 'Do I need to know programming before starting?', a: 'No! That\'s the beauty of no-code. You\'ll learn concepts as you build. Prior experience helps but is not required.' },
+      { q: 'Can no-code build professional websites?', a: 'Absolutely! Many businesses use no-code tools for production websites and apps. The sites you build in this course will be real, live, professional products.' },
+      { q: 'Will I need to pay for these tools?', a: 'Claude (free tier), VS Code (free), Github (free), Vercel (free tier) — all have free options that are more than sufficient for this course.' },
+      { q: 'Is this course only for students?', a: 'No! Professionals looking to quickly prototype ideas, switch careers, or add digital skills can benefit equally.' },
+      { q: 'What if I get stuck?', a: 'Claude AI is always available to help. Error-handling techniques are covered in Week 2. And your trainer is here every session.' },
     ]) }),
 
     makeBlock(sid, 6, 'wrapup', 'Day 1 Wrap-Up', [
       h('What We Covered Today'),
-      bullets([
-        'How computers work: input, process, output',
-        'Files, folders, and your workspace setup',
-        'The CodeShala folder structure',
-      ]),
+      bullets(['What no-code development is and why it matters', 'Your 4-tool stack: Claude, VS Code, Github, Vercel', 'The complete workflow from idea to live website', 'All tools installed and ready']),
       divider(),
       h('Homework'),
-      p('Explore your computer tonight. Find 5 files you did not know existed. Notice what type they are (.pdf, .jpg, .docx).'),
-      callout('Tomorrow: File Management + Browser Mastery. Bring your laptop fully charged.', 'info'),
-    ], 'End on energy. Ask: what is one thing you learned today that surprised you? Collect attendance. Share tomorrow\'s time.', 10),
+      p('Think about a problem you face daily — at school, at home, or in your community. Write 3 sentences about it. Tomorrow you\'ll start turning it into a project idea.'),
+      callout('Tomorrow: Mastering AI Prompting with Claude. The better you prompt, the better your results.', 'info'),
+    ], 'End on energy. Ask: "What\'s one thing that surprised you today?" Collect attendance. Share tomorrow\'s time.', 10),
   ]
 }
 
-// ─── DAY 2: File Management + Browser Mastery ─────────────────────────────────
-function day2Blocks(): Block[] {
+// ─── DAY 2: Mastering AI Prompting with Claude ────────────────────────────────
+function day2(): Block[] {
   const sid = S[1]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 2 — File Management + Browser Mastery', [
-      h('Day 2 — File Management + Browser Mastery'),
-      p('Today you master two tools you use every single day but probably never learned properly: your file system and your browser.'),
-      bullets(['File types and extensions', 'Organising projects like a developer', 'Browser DevTools — your new superpower']),
-      callout('Developers spend 20% of their time writing code and 80% navigating files and browsers. Master these and you are already ahead.', 'tip'),
-    ], 'Quick recap of Day 1. Ask: did anyone explore their computer last night? What did they find?', 10),
+    makeBlock(sid, 0, 'intro', 'Day 2 — Mastering AI Prompting with Claude', [
+      h('Day 2 — Mastering AI Prompting with Claude'),
+      p('Analogy: Ordering food at a restaurant. "I want something" gets you a random dish. "I want a vegetarian pizza with extra cheese, thin crust, no olives" gets you exactly what you want.'),
+      bullets(['The 4 Pillars of Good Prompts', 'The Prompting Formula', '5 Types of Prompts you will use', 'Practice with real scenarios']),
+      callout('Claude is incredibly smart, but clear communication = better results. This is the most important skill in this course.', 'tip'),
+    ], 'Start by showing a bad prompt and a good prompt side by side in Claude. Let students see the difference in output quality before teaching the theory.', 10),
 
-    makeBlock(sid, 1, 'concept', 'File Types and Extensions', [
-      h('Every File Has a Type'),
-      p('The extension at the end of a filename tells the computer what kind of file it is and which program should open it.'),
-      bullets([
-        '.txt — plain text, opens in Notepad',
-        '.html — web page, opens in browser',
-        '.css — stylesheet for web pages',
-        '.js — JavaScript code',
-        '.jpg / .png — images',
-        '.pdf — document, opens in PDF reader',
-        '.zip — compressed archive',
-      ]),
-      callout('Never rename a file extension unless you know what you are doing. Changing .html to .txt breaks the file.', 'warning'),
+    makeBlock(sid, 1, 'concept', 'The 4 Pillars of Good Prompts', [
+      h('Pillar 1: BE SPECIFIC'),
+      bullets(['Bad: "Make a website"', 'Good: "Create a landing page for a coffee shop with a hero section, menu, and contact form"']),
       divider(),
-      h('Show File Extensions'),
-      p('By default, Windows hides file extensions. Turn them on: View > Show > File name extensions.'),
-    ], 'Show this on your screen. Many students have never seen file extensions. This is a revelation moment.', 15),
+      h('Pillar 2: PROVIDE CONTEXT'),
+      bullets(['Bad: "Add a button"', 'Good: "Add a Download Menu button below the hero image that\'s blue with white text"']),
+      divider(),
+      h('Pillar 3: MENTION TECHNOLOGY'),
+      bullets(['Bad: "Build a contact form"', 'Good: "Build a contact form using HTML and CSS with name, email, and message fields"']),
+      divider(),
+      h('Pillar 4: ASK FOR EXPLANATIONS'),
+      bullets(['"Explain what each part of this code does"', '"Why did you use this approach?"']),
+    ], 'Write these 4 pillars on the whiteboard. They stay there for the rest of the course. Every time a student asks "how do I prompt Claude?", point to the board.', 20),
 
-    makeBlock(sid, 2, 'demo', 'Browser DevTools', [
-      h('Right-Click > Inspect — Your Secret Weapon'),
-      numbered([
-        'Open Chrome or Edge browser',
-        'Go to any website (try google.com)',
-        'Right-click anywhere on the page',
-        'Click "Inspect" or press F12',
-        'Click the Elements tab — you are looking at the HTML of the page',
-        'Hover over HTML lines — watch the page highlight',
-        'Try the Console tab — type: document.title and press Enter',
+    makeBlock(sid, 2, 'concept', 'The Prompting Formula + 5 Prompt Types', [
+      h('The Formula'),
+      code('[WHAT you want] + [HOW it should work/look] + [WHY/Context if needed]\n\nExample:\n"Create a responsive navigation menu [WHAT]\nwith Home, About, Services, Contact links that collapses to a hamburger icon on mobile [HOW]\nfor a photography portfolio website [WHY/Context]"', 'text'),
+      divider(),
+      h('5 Types of Prompts'),
+      bullets([
+        'Generation: "Create a hero section with heading, subheading, and CTA button"',
+        'Modification: "Change the button color from blue to green and make it larger"',
+        'Debugging: "This code shows an error: [paste error]. How do I fix it?"',
+        'Explanation: "Explain what this CSS flexbox code is doing"',
+        'Best Practice: "What\'s the best way to make this form mobile-responsive?"',
       ]),
-      callout('Every website you have ever visited is made of HTML, CSS, and JavaScript. DevTools lets you see and edit it live.', 'info'),
-    ], 'This always gets a reaction. Students realise they can "see inside" any website. Let them explore for 2 minutes after the demo.', 20),
+    ], 'Show each prompt type live in Claude. The debugging prompt is especially important — students will use it constantly.', 20),
 
-    makeBlock(sid, 3, 'activity', 'Inspect a Real Website', [
-      h('Activity: Explore Any Website with DevTools'),
-      p('Pick any website you use regularly. Open DevTools and explore.'),
+    makeBlock(sid, 3, 'demo', 'Bad Prompt vs Good Prompt — Live Comparison', [
+      h('Live Demo: See the Difference'),
       numbered([
-        'Open your favourite website in Chrome',
-        'Press F12 to open DevTools',
-        'Find the main heading of the page in the Elements panel',
-        'Double-click the text and change it to your name',
-        'Take a screenshot of your "edited" website',
+        'Open Claude.ai',
+        'Send this BAD prompt: "Make pricing cards"',
+        'Show the generic output',
+        'Now send this GOOD prompt: "Create a pricing section with 3 cards (Basic, Pro, Enterprise) displaying price, 5 features each, and a Choose Plan button. Use a modern gradient background."',
+        'Show the dramatically better output',
+        'Discuss: same task, completely different results',
       ]),
-      callout('This only changes it on your screen — you are not hacking anything! Refresh the page and it goes back to normal.', 'info'),
-    ], 'This is a fun activity. Students love "editing" famous websites. Encourage creativity. Common question: am I hacking? Reassure them.', 15,
-    { activity_data: activity('Inspect a Real Website', 'Use DevTools to find and temporarily edit the main heading of any website you choose.', 15, 'Encourage fun choices. Let them share screenshots. Reinforce: this is local only, not real editing.', 'Every student has used DevTools to inspect and temporarily modify a live website.') }),
+      callout('The only difference was specificity. This is why prompting is a skill worth mastering.', 'tip'),
+    ], 'Use this demo to make the lesson concrete. Students should feel the difference viscerally, not just understand it intellectually.', 15),
 
-    makeBlock(sid, 4, 'quiz', 'File Types Quiz', [], 'Read aloud. Give 20 seconds.', 5,
-    { quiz_data: trueFalse('Changing a file\'s extension from .html to .txt will make it open correctly in a text editor without any issues.', false, 'False. While the file will open in a text editor, the content is still HTML. More importantly, the browser will no longer recognise it as a web page. Always keep the correct extension for the file type.') }),
+    makeBlock(sid, 4, 'activity', 'Prompt Practice Challenge', [
+      h('Hands-on Task: 5 Prompts Using the 4 Pillars'),
+      p('Open Claude.ai and write prompts for these 5 scenarios:'),
+      numbered([
+        'Ask Claude to create a simple "About Me" section',
+        'Request a navigation menu with specific links',
+        'Get a contact form with validation',
+        'Ask Claude to explain what HTML tags are',
+        'Request 3 different colour schemes for a website',
+      ]),
+      p('For each prompt: write it, get Claude\'s response, screenshot it, and rate yourself — did you follow the 4 pillars?'),
+      callout('Self-reflection: Which prompt worked best and why?', 'info'),
+    ], 'Walk around and read students\' prompts. Give real-time feedback. Common issue: prompts that are too vague. Push them to add more specificity.', 35,
+    { activity_data: activity('Prompt Practice Challenge', 'Write 5 prompts using the 4-pillar formula and screenshot Claude\'s responses.', 35, 'Walk the room. Give real-time feedback on prompt quality. Highlight the best prompts to the class.', '5 prompts written using the formula, each specific and contextual, screenshots saved.') }),
 
-    makeBlock(sid, 5, 'faq', 'Browser and File FAQs', [], 'Pull up when relevant questions arise.', 5,
+    makeBlock(sid, 5, 'quiz', 'Day 2 Knowledge Check', [], 'Read aloud. Give 20 seconds per question.', 10,
+    { quiz_data: mcq('When asking Claude to fix an error, what should you always include?', [
+      { text: 'Your favourite colour' },
+      { text: 'The error message or the broken code', correct: true },
+      { text: 'The time of day' },
+      { text: 'Your computer brand' },
+    ], 'Always paste the exact error message and the relevant code. Claude can only fix what it can see. "It\'s not working" gives Claude nothing to work with.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 2 FAQs', [], 'Common prompting questions.', 5,
     { faq_items: faqs([
-      { q: 'Which browser should I use for development?', a: 'Chrome or Edge are best for development because they have the most powerful DevTools. Firefox is also good. Avoid Safari for development work.' },
-      { q: 'Can I use DevTools on my phone?', a: 'Yes, but it is much harder. For development, always use a laptop or desktop with a full browser.' },
-      { q: 'What is the difference between a folder and a directory?', a: 'They are the same thing. "Directory" is the technical term used by developers and the command line. "Folder" is the user-friendly term used in graphical interfaces.' },
+      { q: 'How long should my prompts be?', a: 'Long enough to be clear, short enough to be focused. Usually 2–4 sentences is perfect. Clarity matters more than length.' },
+      { q: 'Can I ask Claude to explain its own code?', a: 'Yes! "Explain this code line by line" is a great prompt and always encouraged. Understanding what you\'re implementing improves your project.' },
+      { q: 'What if Claude\'s response isn\'t what I wanted?', a: 'Refine your prompt with more details or say "That\'s close, but can you make it [specific change]?" Iteration is normal and expected.' },
+      { q: 'Can I ask Claude for multiple variations?', a: 'Yes! "Give me 3 different design options for this button" works great. More options = better chance of finding what you want.' },
+      { q: 'What if I don\'t understand the code Claude generates?', a: 'Ask Claude to explain it! Understanding what you\'re implementing always improves your project and helps you debug later.' },
     ]) }),
 
-    makeBlock(sid, 6, 'wrapup', 'Day 2 Wrap-Up', [
+    makeBlock(sid, 7, 'wrapup', 'Day 2 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['File types and extensions', 'Showing hidden extensions in Windows', 'Browser DevTools — inspect any website', 'Temporarily editing live websites']),
+      bullets(['The 4 Pillars: Specific, Context, Technology, Ask for Explanations', 'The prompting formula: WHAT + HOW + WHY', '5 types of prompts: Generation, Modification, Debugging, Explanation, Best Practice', 'Practiced with 5 real scenarios']),
       divider(),
       h('Homework'),
-      p('Inspect 3 different websites tonight. Find one thing on each that surprises you about how it is built.'),
-      callout('Tomorrow: Logic Thinking + Problem Solving. No computer needed — bring a pen and paper.', 'info'),
-    ], 'Great energy day. End with the DevTools screenshots shared on screen if possible.', 10),
+      p('Use Claude tonight to ask about your problem idea from yesterday. Ask: "What features should a website solving [your problem] have?" Save Claude\'s response.'),
+      callout('Tomorrow: Web Basics + VS Code Setup. You\'ll write your first HTML and see it in a browser.', 'info'),
+    ], 'Students now have the most important skill in the course. Celebrate that. Tomorrow they start building.', 10),
   ]
 }
 
-// ─── DAY 3: Logic Thinking + Problem Solving ──────────────────────────────────
-function day3Blocks(): Block[] {
+// ─── DAY 3: Web Basics + VS Code Setup ────────────────────────────────────────
+function day3(): Block[] {
   const sid = S[2]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 3 — Logic Thinking + Problem Solving', [
-      h('Day 3 — Logic Thinking + Problem Solving'),
-      p('Today is about how developers think. Not syntax. Not tools. Pure thinking.'),
-      bullets(['Breaking big problems into small steps', 'If-then-else logic', 'Loops and patterns', 'Debugging mindset']),
-      callout('The best developers are not the fastest typists. They are the clearest thinkers.', 'tip'),
-    ], 'This is a pen-and-paper day. No screens needed for the first half. Get students away from their laptops.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 3 — Web Basics + VS Code Setup', [
+      h('Day 3 — Web Basics + VS Code Setup'),
+      p('Analogy: Building a house. HTML = structure (walls, rooms, doors). CSS = decoration (paint, furniture, style). JavaScript = functionality (lights, plumbing, appliances).'),
+      bullets(['The 3 building blocks: HTML, CSS, JavaScript', 'Recognise code patterns without memorising', 'Set up your first project folder in VS Code', 'Preview your project with Live Server']),
+      callout('You don\'t write this from scratch — Claude generates it. But you need to recognise these patterns to review and modify Claude\'s output.', 'info'),
+    ], 'Open VS Code before class. Have a simple HTML file ready to show. Students should see code on screen from the first minute.', 10),
 
-    makeBlock(sid, 1, 'concept', 'How Developers Think', [
-      h('Decomposition — Break It Down'),
-      p('Every complex problem can be broken into smaller, simpler problems. This is called decomposition.'),
-      bullets(['Big problem: Build a website', 'Smaller: Build the header, build the nav, build the content, build the footer', 'Even smaller: Make the logo, make the menu items, make the search bar']),
+    makeBlock(sid, 1, 'concept', 'HTML, CSS, and JavaScript', [
+      h('HTML — The Skeleton'),
+      code('<h1>Heading</h1>          → Main title\n<p>Paragraph text</p>      → Text content\n<button>Click Me</button>  → Interactive button\n<img src="photo.jpg">      → Images\n<div>Container</div>       → Boxes to organise content\n<a href="url">Link</a>     → Clickable links', 'html'),
       divider(),
-      h('If-Then-Else Logic'),
-      p('Almost every program ever written follows this pattern:'),
-      code('IF something is true\n  THEN do this\nELSE\n  do that instead', 'pseudocode'),
-      p('Example: IF the user is logged in, THEN show their dashboard. ELSE show the login page.'),
+      h('CSS — The Stylist'),
+      code('color: blue;           → Text colour\nbackground: white;     → Background colour\nfont-size: 24px;       → Text size\npadding: 20px;         → Space INSIDE elements\nmargin: 10px;          → Space OUTSIDE elements\ndisplay: flex;         → Modern layout system', 'css'),
       divider(),
-      h('Loops — Do It Again'),
-      p('When you need to repeat something, you use a loop.'),
-      code('FOR each student in the class\n  Print their name\nEND FOR', 'pseudocode'),
-    ], 'Draw these on the whiteboard as you explain. Use real-life examples: traffic lights use if-then-else. Alarm clocks use loops.', 25),
+      h('JavaScript — The Brain'),
+      bullets(['Form validation (checking if email is valid)', 'Button click actions', 'Animations and transitions', 'Pop-up messages and modals']),
+      callout('Padding is space INSIDE an element. Margin is space OUTSIDE. Think: padding is the room inside a box, margin is the gap between boxes.', 'tip'),
+    ], 'Show each language in a real file. Point to the tags, properties, and functions. Ask students to guess what each line does before explaining.', 25),
 
-    makeBlock(sid, 2, 'demo', 'Solving a Problem Step by Step', [
-      h('Problem: Make a Cup of Tea'),
-      p('Let us write the algorithm for making a cup of tea — like a computer would need it.'),
-      numbered([
-        'Fill kettle with water',
-        'Turn on kettle',
-        'WAIT until water boils',
-        'Place teabag in cup',
-        'Pour boiling water into cup',
-        'WAIT 3 minutes',
-        'Remove teabag',
-        'IF you want milk, THEN add milk',
-        'IF you want sugar, THEN add sugar',
-        'Drink tea',
-      ]),
-      callout('Computers are literal. They do exactly what you tell them — nothing more, nothing less. If you forget a step, the program breaks.', 'warning'),
-    ], 'Do this interactively. Ask students to call out the steps. Deliberately miss a step (like "turn on kettle") and ask: what goes wrong?', 15),
-
-    makeBlock(sid, 3, 'activity', 'Write an Algorithm', [
-      h('Activity: Write an Algorithm for Your Morning Routine'),
-      p('On paper, write the step-by-step algorithm for getting ready in the morning.'),
+    makeBlock(sid, 2, 'concept', 'VS Code Interface + Project Structure', [
+      h('VS Code Interface'),
       bullets([
-        'Include at least one IF-THEN-ELSE decision',
-        'Include at least one loop (something you repeat)',
-        'Be specific enough that a robot could follow it',
-        'Swap with a partner and try to find missing steps',
+        'Activity Bar (left): Switch between Explorer, Search, Source Control',
+        'Editor Area (centre): Where files open and you view/edit code',
+        'Terminal (bottom): Built-in command line',
+        'Status Bar (very bottom): Shows file info, language, errors',
       ]),
-      callout('There is no single correct answer. The goal is to think in steps.', 'info'),
-    ], 'Give 10 minutes to write, then 5 minutes to swap and review. Listen for interesting algorithms to share with the class.', 15,
-    { activity_data: activity('Write an Algorithm', 'Write a step-by-step algorithm for your morning routine including at least one IF-THEN-ELSE and one loop.', 15, 'Walk around and read what students write. Pick 2-3 interesting ones to share. Highlight creative use of conditions and loops.', 'Every student has written a structured algorithm with conditions and loops.') }),
+      divider(),
+      h('Your Project Structure'),
+      code('my-project/\n├── index.html       (Main webpage)\n├── css/\n│   └── styles.css   (Styling)\n├── js/\n│   └── script.js    (Functionality)\n├── images/          (Photos, icons)\n└── README.md        (Project documentation)', 'text'),
+      divider(),
+      h('Key Shortcuts'),
+      bullets(['Save file: Ctrl+S (Windows) / Cmd+S (Mac)', 'New file: Ctrl+N', 'Quick file switch: Ctrl+P', 'Format code: Shift+Alt+F', 'Toggle terminal: Ctrl+`']),
+      callout('Enable Auto Save: File → Auto Save. Never lose work again!', 'tip'),
+    ], 'Create the folder structure live while students follow along. The physical act of creating the folder makes it real.', 20),
 
-    makeBlock(sid, 4, 'quiz', 'Logic Check', [], 'Give 30 seconds to think before revealing.', 5,
-    { quiz_data: mcq('A website shows "Welcome back, Rahul!" when you are logged in, and "Please log in" when you are not. What programming concept is this?', [
-      { text: 'A loop — it keeps checking if you are logged in' },
-      { text: 'If-Then-Else logic — different output based on a condition', correct: true },
-      { text: 'Decomposition — breaking the page into smaller parts' },
-      { text: 'An algorithm — a set of steps to follow' },
-    ], 'This is classic If-Then-Else. IF user is logged in THEN show welcome message ELSE show login prompt. You will write this exact logic later in the course.') }),
+    makeBlock(sid, 3, 'demo', 'Live Server in Action', [
+      h('Demo: See Your Code in the Browser Instantly'),
+      numbered([
+        'Create folder: my-project on Desktop',
+        'Open in VS Code (File → Open Folder)',
+        'Create index.html inside the folder',
+        'Ask Claude: "Create a basic HTML5 starter template with linked CSS and JS files for a portfolio website"',
+        'Copy the HTML to index.html',
+        'Right-click index.html → "Open with Live Server"',
+        'Browser opens automatically showing your page',
+        'Make a change in the HTML, save (Ctrl+S), watch the browser refresh instantly',
+      ]),
+      callout('Live Server is a game changer. No more manual refreshing. Every save = instant preview.', 'tip'),
+    ], 'Do this live. The moment students see their code appear in a browser is always exciting. Let the reaction happen.', 15),
 
-    makeBlock(sid, 5, 'faq', 'Logic and Thinking FAQs', [], 'Common questions about developer thinking.', 5,
+    makeBlock(sid, 4, 'activity', 'Set Up Project + Code Detective Challenge', [
+      h('Hands-on Task: Project Setup + Code Analysis'),
+      numbered([
+        'Create your project folder structure (as shown above)',
+        'Ask Claude: "Create a basic HTML5 starter template with linked CSS and JS files for a [your project type] website"',
+        'Copy HTML to index.html, CSS to css/styles.css, JS to js/script.js',
+        'Open with Live Server — you should see your page!',
+        'In the HTML Claude gave you, identify: 5 HTML tags and what they do, 5 CSS properties and their effects, any JavaScript present',
+        'Ask Claude: "Explain this code section by section"',
+        'Compare your guesses with Claude\'s explanation',
+      ]),
+    ], 'Walk around. Common issues: wrong file extensions (.html.txt), CSS not linking. Check that everyone has Live Server working before moving on.', 35,
+    { activity_data: activity('Set Up Project + Code Detective', 'Create project folder, generate starter code with Claude, open with Live Server, identify HTML/CSS/JS sections.', 35, 'Check folder structure. Ensure Live Server is working for everyone. Help with file linking issues.', 'Project folder structured correctly, Live Server working, HTML/CSS/JS sections identified and understood.') }),
+
+    makeBlock(sid, 5, 'quiz', 'Day 3 Knowledge Check', [], 'Quick check on web basics.', 5,
+    { quiz_data: mcq('What is the standard name for the main HTML file?', [
+      { text: 'main.html' },
+      { text: 'home.html' },
+      { text: 'index.html', correct: true },
+      { text: 'webpage.html' },
+    ], 'index.html is the web standard. When a browser visits a folder, it automatically looks for index.html first. Always name your main file index.html.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 3 FAQs', [], 'Common web basics questions.', 5,
     { faq_items: faqs([
-      { q: 'Do I need to be good at maths to code?', a: 'No. Most web development uses very basic maths — addition, subtraction, percentages. Logic thinking is far more important than maths ability.' },
-      { q: 'What is pseudocode?', a: 'Pseudocode is writing out your logic in plain English before writing actual code. It helps you plan without worrying about syntax. Many professional developers still use it.' },
-      { q: 'How do I get better at problem solving?', a: 'Practice. Every time you face a problem, try to break it into smaller steps before jumping to a solution. The more you do it, the more natural it becomes.' },
+      { q: 'Do I need to memorise all HTML tags?', a: 'No! Claude generates the code. You just need to recognise common patterns. Understanding what tags do is more important than memorising them.' },
+      { q: 'Can I mix HTML, CSS, and JavaScript in one file?', a: 'Yes, but separating them is cleaner and more professional. Separate files make it easier to find and edit specific parts.' },
+      { q: 'Do I need to use VS Code, or can I use another editor?', a: 'You can use others, but VS Code is the industry standard and has the best extension support for this course.' },
+      { q: 'What if Live Server doesn\'t work?', a: 'Check that files are saved, paths are correct in HTML (href="css/styles.css"), and the Live Server extension is installed. Restart VS Code if needed.' },
+      { q: 'What if I accidentally delete a file?', a: 'VS Code has Undo for file operations. Once we set up Github tomorrow, you\'ll also have version backups.' },
     ]) }),
 
-    makeBlock(sid, 6, 'wrapup', 'Day 3 Wrap-Up', [
+    makeBlock(sid, 7, 'wrapup', 'Day 3 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['Decomposition — breaking problems into steps', 'If-Then-Else logic', 'Loops and repetition', 'Writing algorithms in plain English']),
+      bullets(['HTML = structure, CSS = style, JavaScript = functionality', 'VS Code interface and key shortcuts', 'Project folder structure', 'Live Server for instant browser preview']),
       divider(),
       h('Homework'),
-      p('Pick any app on your phone. Write a 10-step algorithm for one thing it does — like sending a message or searching for a song.'),
-      callout('Tomorrow: Flowcharts + Wireframing. Bring coloured pens if you have them.', 'info'),
-    ], 'This is often a mindset-shifting day. Students realise coding is thinking, not typing. Celebrate that insight.', 10),
+      p('Explore your starter page. Ask Claude to change the heading text, background colour, and font. See how CSS changes affect the browser instantly.'),
+      callout('Tomorrow: Problem Identification + Requirements. You\'ll define exactly what you\'re building for the next 11 days.', 'info'),
+    ], 'Students now have a working development environment. This is a real milestone. Celebrate it.', 10),
   ]
 }
 
-// ─── DAY 4: Flowcharts + Wireframing ──────────────────────────────────────────
-function day4Blocks(): Block[] {
+// ─── DAY 4: Problem Identification & Requirements Gathering ───────────────────
+function day4(): Block[] {
   const sid = S[3]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 4 — Flowcharts + Wireframing on Paper', [
-      h('Day 4 — Flowcharts + Wireframing on Paper'),
-      p('Before any developer writes a single line of code, they draw. Today you learn the two most important planning tools.'),
-      bullets(['Flowcharts — visualise logic and decisions', 'Wireframes — sketch what a page will look like', 'Why planning saves 10x more time than fixing']),
-      callout('Professional developers spend more time planning than coding. A 30-minute sketch prevents 3 hours of rework.', 'tip'),
-    ], 'Distribute paper and pens. This is a hands-on drawing session. Encourage messy, rough sketches — perfection is not the goal.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 4 — Problem Identification & Requirements Gathering', [
+      h('Day 4 — Problem Identification & Requirements Gathering'),
+      p('Bad approach: "I\'ll build a website because everyone has one." Good approach: "Delivery customers struggle to track orders → I\'ll build a tracking dashboard."'),
+      bullets(['Find a real problem worth solving', 'Create a project brief', 'MoSCoW method for feature prioritisation', 'Write detailed feature specifications']),
+      callout('No-code development is fast, but building the wrong thing fast is still a waste. Plan first.', 'warning'),
+    ], 'Ask students to share the problem ideas they thought about for homework. Write them on the whiteboard. This creates energy and shows the variety of possibilities.', 10),
 
-    makeBlock(sid, 1, 'concept', 'Flowchart Symbols', [
-      h('The 4 Shapes You Need'),
+    makeBlock(sid, 1, 'concept', 'The Problem Identification Framework', [
+      h('Step 1: Find a Real Problem'),
+      p('Ask yourself or others: What tasks take too much time? What\'s frustrating in daily life? What information is hard to find? What processes could be simpler?'),
       bullets([
-        'Oval / Rounded rectangle — Start or End',
-        'Rectangle — A process or action (Do something)',
-        'Diamond — A decision (Yes or No question)',
-        'Arrow — Flow direction',
+        'Students: "Finding tutors in my area is confusing" → Tutor directory website',
+        'Professionals: "Our team shares files through email" → File-sharing dashboard',
+        'Business: "Customers ask the same questions repeatedly" → FAQ page',
       ]),
-      callout('You only need these 4 shapes to map any process in the world.', 'info'),
       divider(),
-      h('Wireframe Basics'),
-      p('A wireframe is a rough sketch of a web page. No colours, no fonts — just boxes and labels.'),
-      bullets([
-        'Box with X through it = an image placeholder',
-        'Horizontal lines = text content',
-        'Rectangle with label = a button',
-        'Thin rectangle at top = navigation bar',
-      ]),
-    ], 'Draw these shapes on the whiteboard as you explain. Keep it simple. Students often overthink wireframes.', 20),
+      h('Step 2: Define Your Users'),
+      bullets(['Age group and tech skill level', 'What device will they use? (phone/desktop)', 'What is their main goal?']),
+      divider(),
+      h('Step 3: Create a Project Brief'),
+      code('PROJECT NAME: [Clear, catchy name]\n\nPROBLEM STATEMENT:\n[Who] struggles with [what] because [why]\n\nSOLUTION:\nA [type of website/app] that helps users [do what]\n\nKEY FEATURES (Top 3-5):\n1.\n2.\n3.\n\nOUT OF SCOPE:\n- [Feature too complex]\n- [Feature for later]', 'text'),
+    ], 'Walk through a real example. Use a student\'s idea from the whiteboard. Build the brief together as a class before students do their own.', 25),
 
-    makeBlock(sid, 2, 'demo', 'Flowchart: User Login Process', [
-      h('Live Demo: Drawing a Login Flowchart'),
+    makeBlock(sid, 2, 'concept', 'MoSCoW Method + Feature Specifications', [
+      h('MoSCoW: Prioritise Your Features'),
+      bullets([
+        'Must Have: Core functionality required to launch. Can\'t go live without these.',
+        'Should Have: Important but not critical. Can add in final days.',
+        'Could Have: Nice extras if time allows.',
+        'Won\'t Have: Out of scope. Too complex or for future versions.',
+      ]),
+      callout('A polished site with 3 working features beats an unfinished site with 8 broken ones.', 'tip'),
+      divider(),
+      h('Feature Specification Template'),
+      code('FEATURE NAME: [Clear name]\n\nWHAT IT DOES:\n[User action → System response]\n\nUSER FLOW:\n1. User does X\n2. System shows Y\n3. User completes Z\n\nCOMPONENTS NEEDED:\n- UI elements (buttons, forms, cards)\n- Data to display\n\nACCEPTANCE CRITERIA:\n- [ ] User can do X successfully\n- [ ] Works on mobile and desktop', 'text'),
+    ], 'The MoSCoW method is the most important planning tool in this course. Students who skip this end up rebuilding everything in Week 3.', 20),
+
+    makeBlock(sid, 3, 'activity', 'Project Brief + Requirements Document', [
+      h('Hands-on Task: Complete Requirements Document'),
       numbered([
-        'Start oval: "User visits login page"',
-        'Rectangle: "User enters email and password"',
-        'Diamond: "Are credentials correct?"',
-        'YES arrow: Rectangle "Show dashboard"',
-        'NO arrow: Rectangle "Show error message"',
-        'Diamond: "Try again?"',
-        'YES arrow: back to "User enters email and password"',
-        'NO arrow: End oval "User leaves"',
+        'Brainstorm 3 problem ideas (15 mins) — use the framework above',
+        'Pick the best idea — ask: Is it solvable with a website? Can I build it in 10 days? Would 10+ people find it useful?',
+        'Create your project brief with Claude: "I want to build [idea]. Help me create a clear project brief with problem statement, solution, target users, and 3-5 key features. Keep it simple for a 10-day build."',
+        'MoSCoW categorisation: "Help me categorise these features for my project: [list all ideas]. Use MoSCoW method and explain your reasoning."',
+        'Detail each Must Have feature: write user flows, components, and acceptance criteria',
+        'Claude review: "Review this requirements document. What\'s missing or unclear? [paste doc]"',
       ]),
-      callout('Notice how the flowchart makes the logic crystal clear before writing any code.', 'tip'),
-    ], 'Draw this live on the whiteboard or paper under a document camera. Go slowly. Ask students to predict the next shape.', 15),
+      callout('Save this document! You will reference it constantly during development. This is your blueprint.', 'warning'),
+    ], 'Circulate and help students who are stuck. Common issue: ideas that are too complex. Push them to simplify. "What is the ONE core thing this does?"', 50,
+    { activity_data: activity('Project Brief + Requirements Document', 'Brainstorm 3 ideas, pick 1, create a complete project brief and requirements document with Claude.', 50, 'Help students scope down complex ideas. Ensure everyone has a clear, buildable project by end of session.', '3 ideas brainstormed, 1 selected, complete project brief and MoSCoW requirements document created.') }),
 
-    makeBlock(sid, 3, 'activity', 'Wireframe Your Portfolio', [
-      h('Activity: Wireframe Your Portfolio Homepage'),
-      p('Sketch a wireframe of the portfolio website you will build in Week 3.'),
-      bullets([
-        'Navigation bar at the top with your name and menu links',
-        'Hero section: your name, title, and a call-to-action button',
-        'About section: photo placeholder and a short bio',
-        'Skills section: a grid of skill boxes',
-        'Footer: contact links',
-      ]),
-      callout('Use boxes, lines, and labels only. No colours. No details. Just layout.', 'info'),
-    ], 'Give 15 minutes. Walk around and give feedback. Common mistake: too much detail. Remind them wireframes are rough sketches, not designs.', 15,
-    { activity_data: activity('Wireframe Your Portfolio', 'Sketch a wireframe of your portfolio homepage with nav, hero, about, skills, and footer sections.', 15, 'Encourage rough sketches. Discourage perfectionism. Look for students who understand layout vs those who are drawing logos.', 'Every student has a hand-drawn wireframe of their portfolio homepage.') }),
+    makeBlock(sid, 4, 'quiz', 'Day 4 Knowledge Check', [], 'Requirements planning check.', 5,
+    { quiz_data: mcq('What does "Must Have" mean in the MoSCoW method?', [
+      { text: 'Nice animation effects' },
+      { text: 'Core functionality required to launch — can\'t go live without it', correct: true },
+      { text: 'Future version features' },
+      { text: 'Experimental ideas' },
+    ], 'Must Have features are your minimum viable product. Without them, the site doesn\'t fulfil its core purpose. Everything else is secondary.') }),
 
-    makeBlock(sid, 4, 'quiz', 'Planning Tools Quiz', [], 'Quick check on today\'s concepts.', 5,
-    { quiz_data: mcq('In a flowchart, which shape represents a decision point (a yes/no question)?', [
-      { text: 'Rectangle — it represents an action' },
-      { text: 'Oval — it represents start or end' },
-      { text: 'Diamond — it represents a decision', correct: true },
-      { text: 'Arrow — it represents the flow direction' },
-    ], 'The diamond shape always represents a decision — a point where the flow splits into two paths based on a yes/no condition. This maps directly to If-Then-Else logic from Day 3.') }),
-
-    makeBlock(sid, 5, 'faq', 'Planning FAQs', [], 'Common questions about planning and design.', 5,
+    makeBlock(sid, 5, 'faq', 'Day 4 FAQs', [], 'Common planning questions.', 5,
     { faq_items: faqs([
-      { q: 'Do professional developers actually draw wireframes?', a: 'Yes, always. Even senior developers sketch before coding. Tools like Figma are digital wireframing tools used by millions of professionals.' },
-      { q: 'What is the difference between a wireframe and a mockup?', a: 'A wireframe is a rough layout sketch with no styling. A mockup is a detailed, styled design that looks close to the final product. We start with wireframes.' },
-      { q: 'Can I use an app to make wireframes instead of paper?', a: 'Yes. Figma, Excalidraw, and even Google Slides work well. But paper is fastest for initial ideas. We will use Figma later in the course.' },
+      { q: 'What if I can\'t think of a problem to solve?', a: 'Look at your daily routine. What\'s annoying? Ask friends what frustrates them. Browse online communities for common complaints.' },
+      { q: 'Should my project be completely original?', a: 'No! Improving existing solutions or combining ideas is great. Don\'t reinvent the wheel — make it roll smoother.' },
+      { q: 'How do I know if something is "too complex"?', a: 'Ask Claude: "Can I build [X] with HTML/CSS/JavaScript and no backend server?" It will guide you honestly.' },
+      { q: 'How detailed should feature specs be?', a: 'Detailed enough that someone else (or Claude) could build it without guessing. If there\'s ambiguity, add clarity.' },
+      { q: 'Can I change my project idea later?', a: 'Try to finalise by end of today. Changing midway wastes precious build time. Simplify rather than change.' },
     ]) }),
 
     makeBlock(sid, 6, 'wrapup', 'Day 4 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['Flowchart symbols and how to use them', 'Wireframing — sketching page layouts', 'Your portfolio wireframe is ready']),
+      bullets(['Problem identification framework', 'Project brief template', 'MoSCoW method for feature prioritisation', 'Feature specification with user flows and acceptance criteria']),
       divider(),
       h('Homework'),
-      p('Refine your wireframe. Add a Projects section and a Contact section. You will build exactly this in Week 3.'),
-      callout('Tomorrow: Introduction to AI + Claude Basics. Bring your laptop — we go online.', 'info'),
-    ], 'Collect the wireframes or photograph them. You will reference these in Week 3 when students build their portfolios.', 10),
+      p('Review your requirements document tonight. Add anything you missed. Think about what your site will look like — sketch a rough wireframe on paper.'),
+      callout('Tomorrow: Git, Github & Version Control. You\'ll push your project online for the first time.', 'info'),
+    ], 'Students now have a clear plan. The rest of the course is executing that plan. Celebrate the clarity.', 10),
   ]
 }
 
-// ─── DAY 5: Introduction to AI + Claude Basics ────────────────────────────────
-function day5Blocks(): Block[] {
+// ─── DAY 5: Git, Github & Version Control ─────────────────────────────────────
+function day5(): Block[] {
   const sid = S[4]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 5 — Introduction to AI + Claude Basics', [
-      h('Day 5 — Introduction to AI + Claude Basics'),
-      p('Today you meet your most powerful tool: Claude AI. This changes everything about how you will learn and build.'),
-      bullets(['What AI is and is not', 'How Large Language Models work (simply)', 'Claude.ai — your AI coding partner', 'First conversation with Claude']),
-      callout('AI does not replace learning. It accelerates it. You still need to understand what you are building — AI just removes the boring parts.', 'tip'),
-    ], 'High energy day. Students are usually excited about AI. Channel that energy. Open claude.ai on the projector before class starts.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 5 — Git, Github & Version Control', [
+      h('Day 5 — Git, Github & Version Control'),
+      p('Without version control: files named essay_final.doc, essay_final_v2.doc, essay_FINAL_FINAL.doc. With Git: one file, complete history of every change, ability to go back to any version.'),
+      bullets(['Git vs Github — they\'re different!', 'Key concepts: commit, push, pull', 'The daily workflow', 'Your first commit and push']),
+      callout('All developers use Git. Your Github profile is your developer portfolio. Start building it today.', 'tip'),
+    ], 'Ask: "Has anyone ever lost work because they saved over a file?" That\'s the problem Git solves. Make it personal.', 10),
 
-    makeBlock(sid, 1, 'concept', 'What is AI, Really?', [
-      h('AI is Pattern Recognition at Scale'),
-      p('An AI language model has read billions of pages of text — books, websites, code, conversations. It learned patterns from all of it.'),
-      p('When you ask it a question, it predicts the most useful response based on those patterns.'),
-      callout('It is not thinking. It is not conscious. It is an extremely sophisticated autocomplete.', 'info'),
-      divider(),
-      h('What Claude is Good At'),
+    makeBlock(sid, 1, 'concept', 'Git vs Github + Key Concepts', [
+      h('Git vs Github — They\'re Different'),
       bullets([
-        'Explaining concepts in simple language',
-        'Writing and debugging code',
-        'Answering questions with context',
-        'Helping you plan and structure projects',
-        'Reviewing and improving your writing',
+        'Git: Software on your computer. Tracks changes locally. Like Microsoft Word (software).',
+        'Github: Website (github.com). Stores your code online. Like OneDrive (cloud storage).',
       ]),
       divider(),
-      h('What Claude is NOT Good At'),
+      h('Key Concepts'),
       bullets([
-        'Real-time information (it has a knowledge cutoff)',
-        'Accessing the internet or your files',
-        'Being 100% accurate — always verify important facts',
-        'Replacing your own understanding',
+        'Repository (Repo): Your project folder tracked by Git — contains all files + complete history',
+        'Commit: A snapshot of your project at a moment in time. Like saving a checkpoint in a game.',
+        'Push: Upload your commits to Github — makes your local changes available online',
+        'Pull: Download changes from Github to your computer',
       ]),
-    ], 'The "sophisticated autocomplete" framing helps students understand why AI sometimes gets things wrong. It is predicting, not knowing.', 20),
+      divider(),
+      h('The Daily Workflow'),
+      numbered(['Make changes to files (VS Code)', 'Save files', 'Stage changes (select what to commit)', 'Commit with message ("Add hero section")', 'Push to Github (upload)']),
+    ], 'The Git vs Github distinction confuses many beginners. The analogy to Word/OneDrive usually helps. Repeat it until it clicks.', 20),
 
-    makeBlock(sid, 2, 'demo', 'First Conversation with Claude', [
-      h('Live Demo: Talking to Claude'),
+    makeBlock(sid, 2, 'demo', 'Setting Up Git + First Push', [
+      h('Step-by-Step: Connect Your Project to Github'),
       numbered([
-        'Open claude.ai in your browser',
-        'Create a free account (or log in)',
-        'Type: "Explain what HTML is to a complete beginner in 3 sentences"',
-        'Read the response together',
-        'Now type: "Give me an example of a simple HTML page"',
-        'Copy the code it gives you',
-        'Open Notepad, paste the code, save as index.html',
-        'Open the file in your browser — you have a web page!',
+        'Install Git from git-scm.com (Windows) or run git --version in Terminal (Mac)',
+        'Configure Git: git config --global user.name "Your Name"',
+        'Configure Git: git config --global user.email "your-email@example.com"',
+        'Go to github.com → click "+" → "New repository"',
+        'Name it to match your local folder. Keep it Public. Don\'t initialise with README.',
+        'In VS Code terminal, run the 6 setup commands (shown below)',
+        'Refresh Github — your files should appear!',
       ]),
-      callout('You just built a web page using AI in under 5 minutes. This is the power of the tools you are learning.', 'tip'),
-    ], 'Do this live. The moment students see their first web page appear in a browser is a milestone. Celebrate it.', 20),
+      code('git init\ngit add .\ngit commit -m "Initial commit: Project setup and structure"\ngit branch -M main\ngit remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git\ngit push -u origin main', 'bash'),
+      callout('If you get an authentication error: Github requires personal access tokens. Settings → Developer Settings → Personal Access Tokens → Generate new token. Use the token as your password.', 'warning'),
+    ], 'Do this live. Go slowly. Wait for everyone to catch up at each step. The first push is always the hardest — after that it\'s easy.', 25),
 
-    makeBlock(sid, 3, 'activity', 'Ask Claude Anything', [
-      h('Activity: 5 Questions for Claude'),
-      p('Spend 15 minutes having a real conversation with Claude about topics you are curious about.'),
+    makeBlock(sid, 3, 'concept', 'VS Code Git + Good Commit Messages', [
+      h('Using VS Code\'s Built-in Git (Easier!)'),
       numbered([
-        'Ask Claude to explain one concept from Days 1-4 in a different way',
-        'Ask it to write a simple HTML page about your favourite hobby',
-        'Ask it "What questions should I ask to learn web development faster?"',
-        'Ask it to explain something it just said in even simpler terms',
-        'Ask it to give you a quiz question about what you learned today',
+        'Click the Source Control icon (Activity Bar)',
+        'See all changed files listed',
+        'Click "+" next to a file to stage it',
+        'Write a commit message in the text box',
+        'Click "✓" to commit',
+        'Click "..." → Push',
       ]),
-      callout('Notice how you can ask follow-up questions. Claude remembers the conversation context.', 'info'),
-    ], 'Walk around and see what students are asking. Interesting conversations to highlight to the class. Some students will go off-topic — that is fine, redirect gently.', 15,
-    { activity_data: activity('Ask Claude Anything', 'Have a 15-minute conversation with Claude exploring topics from the course so far.', 15, 'Encourage curiosity. Let students explore freely. Highlight interesting exchanges to the class.', 'Every student has had a multi-turn conversation with Claude and seen it generate working HTML.') }),
+      divider(),
+      h('Writing Good Commit Messages'),
+      bullets([
+        'Bad: "stuff", "changes", "fixed it", "asdfasdf"',
+        'Good: "Add hero section to homepage"',
+        'Good: "Fix navigation menu on mobile"',
+        'Good: "Add contact form with validation"',
+      ]),
+      callout('Formula: [Action] [What] [Where if needed]. Commit after every completed feature — never lose progress.', 'tip'),
+    ], 'Show VS Code\'s Source Control panel. Most students prefer this over terminal commands. Both work — use whichever feels comfortable.', 15),
 
-    makeBlock(sid, 4, 'quiz', 'AI Understanding Check', [], 'Important misconceptions to address.', 5,
-    { quiz_data: mcq('Claude gives you an answer about a recent news event. Should you trust it completely?', [
-      { text: 'Yes — Claude has access to the internet and real-time information' },
-      { text: 'No — Claude has a knowledge cutoff date and cannot access real-time information', correct: true },
-      { text: 'Yes — Claude is always accurate because it has read billions of pages' },
-      { text: 'No — Claude cannot answer questions about news at all' },
-    ], 'Claude\'s training data has a cutoff date. It does not browse the internet in real time. For current events, always verify with a live source. This is one of the most important limitations to understand.') }),
+    makeBlock(sid, 4, 'activity', 'Initialise Git & Make First Commit', [
+      h('Hands-on Task: Your Project Live on Github'),
+      numbered([
+        'Install and configure Git (name + email)',
+        'Create your Github repository (match your folder name)',
+        'Run the 6 setup commands in VS Code terminal',
+        'Refresh Github — your files should appear!',
+        'Practice the workflow: make a small change to README.md, stage it, commit ("Update README with project description"), push, verify on Github',
+        'Ask Claude: "Create a .gitignore file for a basic HTML/CSS/JS project"',
+      ]),
+    ], 'Help students who get authentication errors. This is the most common blocker. Personal access tokens solve it every time.', 30,
+    { activity_data: activity('Initialise Git & Make First Commit', 'Install Git, create Github repo, push initial commit, practice the commit-push workflow.', 30, 'Help with authentication errors. Ensure everyone has their project visible on Github before ending the session.', 'Git installed, Github repo created, initial commit pushed and visible on Github, practice commit completed.') }),
 
-    makeBlock(sid, 5, 'faq', 'AI and Claude FAQs', [], 'Very common questions on AI day.', 5,
+    makeBlock(sid, 5, 'quiz', 'Day 5 Knowledge Check', [], 'Version control check.', 5,
+    { quiz_data: mcq('What does "push" do?', [
+      { text: 'Deletes your Github repo' },
+      { text: 'Creates a commit' },
+      { text: 'Uploads your commits to Github', correct: true },
+      { text: 'Downloads changes from Github' },
+    ], 'Push uploads your local commits to Github. Pull downloads changes from Github to your computer. Commit creates a snapshot. These three commands are the core of the daily workflow.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 5 FAQs', [], 'Common Git questions.', 5,
     { faq_items: faqs([
-      { q: 'Is Claude free?', a: 'Claude has a free tier that is sufficient for this course. The paid Pro plan gives more messages and access to more powerful models, but the free tier works well for learning.' },
-      { q: 'Can I use ChatGPT instead of Claude?', a: 'Yes. ChatGPT, Gemini, and Claude are all capable AI assistants. We use Claude because it tends to give cleaner code explanations, but the skills transfer to any AI tool.' },
-      { q: 'Will AI take my job as a developer?', a: 'AI is changing development, not eliminating it. Developers who use AI tools are more productive. The skill is knowing what to build and how to direct AI — that requires human judgment.' },
-      { q: 'Can Claude write my entire project for me?', a: 'It can generate code, but you need to understand it, customise it, and debug it. Blindly copying AI code without understanding it leads to projects that break and cannot be fixed.' },
+      { q: 'How often should I commit?', a: 'After completing each feature or logical chunk. At minimum, daily. Too many commits is better than too few.' },
+      { q: 'Can others see my code on Github?', a: 'If public, yes. That\'s the point — it\'s your portfolio! Keep private repos for sensitive projects.' },
+      { q: 'What if I deleted a file by accident?', a: 'If you\'ve committed before, you can restore from Git history. This is why committing frequently is so important.' },
+      { q: 'What if I get an authentication error when pushing?', a: 'Github requires personal access tokens. Go to Settings → Developer Settings → Personal Access Tokens → Generate new token. Use the token as your password when pushing.' },
+      { q: 'Do I need to learn terminal Git commands?', a: 'For this course, VS Code\'s GUI is enough. But knowing the commands helps with understanding and is useful for advanced work.' },
     ]) }),
 
-    makeBlock(sid, 6, 'wrapup', 'Day 5 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['How AI language models work', 'Claude.ai — setup and first conversation', 'Generating your first HTML with AI', 'AI limitations to always remember']),
-      divider(),
-      h('Homework'),
-      p('Use Claude tonight to explain one thing you are confused about from this week. Share the conversation tomorrow.'),
-      callout('Tomorrow: Prompt Engineering — how to talk to AI like a pro.', 'info'),
-    ], 'Students are energised after AI day. Channel this into tomorrow\'s prompt engineering session.', 10),
-  ]
-}
-
-// ─── DAY 6: Prompt Engineering ────────────────────────────────────────────────
-function day6Blocks(): Block[] {
-  const sid = S[5]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 6 — Prompt Engineering', [
-      h('Day 6 — Prompt Engineering: Writing Like a Pro'),
-      p('The quality of what AI gives you depends entirely on the quality of what you ask. Today you learn to ask well.'),
-      bullets(['The anatomy of a great prompt', 'Context, role, format, constraints', 'Iterating and refining prompts', 'Prompt patterns for coding']),
-      callout('A bad prompt gets a generic answer. A great prompt gets exactly what you need. This skill is worth more than knowing any programming language.', 'tip'),
-    ], 'Start by showing two prompts side by side: a vague one and a specific one. Let students see the difference in output quality.', 10),
-
-    makeBlock(sid, 1, 'concept', 'The Anatomy of a Great Prompt', [
-      h('4 Elements of a Powerful Prompt'),
-      numbered([
-        'Role — Tell Claude who to be: "You are an expert web developer..."',
-        'Context — Give background: "I am a beginner building my first portfolio..."',
-        'Task — Be specific: "Write the HTML for a hero section with my name, title, and a button..."',
-        'Format — Specify output: "Give me only the HTML code, no explanation"',
-      ]),
-      divider(),
-      h('Bad Prompt vs Good Prompt'),
-      callout('Bad: "Make me a website"\nGood: "You are a web developer. I am a beginner. Write HTML for a portfolio hero section with a heading showing my name Rahul, a subheading saying Full Stack Developer, and a blue button saying Contact Me. Give only the HTML code."', 'info'),
-      divider(),
-      h('Prompt Patterns for Coding'),
-      bullets([
-        '"Explain this code line by line: [paste code]"',
-        '"What is wrong with this code: [paste code]"',
-        '"Rewrite this to be simpler: [paste code]"',
-        '"Add [feature] to this existing code: [paste code]"',
-      ]),
-    ], 'The bad vs good prompt comparison is the key teaching moment. Show both in Claude live and compare outputs.', 25),
-
-    makeBlock(sid, 2, 'demo', 'Live Prompt Refinement', [
-      h('Demo: Improving a Prompt in Real Time'),
-      numbered([
-        'Start with: "Make a navigation bar"',
-        'Show the generic output',
-        'Improve: "Write HTML for a navigation bar with links: Home, About, Projects, Contact. Style it with a dark background and white text using inline CSS."',
-        'Show the improved output',
-        'Improve again: "The links should be horizontal, spaced evenly, and turn purple when hovered."',
-        'Show the final output',
-        'Discuss: same task, 3 different results based on prompt quality',
-      ]),
-      callout('Prompt engineering is iterative. You rarely get the perfect result on the first try. Keep refining.', 'tip'),
-    ], 'This live demo is very effective. Students see the direct relationship between prompt quality and output quality.', 15),
-
-    makeBlock(sid, 3, 'activity', 'Prompt Challenge', [
-      h('Activity: The Prompt Challenge'),
-      p('Your goal: get Claude to generate a complete, styled hero section for your portfolio using only prompts.'),
-      bullets([
-        'Must include: your name, your title/role, a short tagline, and a button',
-        'Must have: a dark background, large white text, and a coloured button',
-        'You can only use prompts — no manual editing of the code',
-        'Iterate until you are happy with the result',
-        'Save the final HTML to your Day6 folder',
-      ]),
-      callout('The constraint of no manual editing forces you to get good at prompting. This is intentional.', 'info'),
-    ], 'This is a competitive activity. Students who finish early can help others refine their prompts. Share the best results on the projector.', 20,
-    { activity_data: activity('Prompt Challenge', 'Use only prompts to get Claude to generate a complete styled hero section for your portfolio.', 20, 'No manual code editing allowed. Students must iterate prompts. Share best results. Discuss what made the winning prompts effective.', 'Every student has a Claude-generated hero section saved as HTML that matches their requirements.') }),
-
-    makeBlock(sid, 4, 'quiz', 'Prompt Engineering Quiz', [], 'Test prompt knowledge.', 5,
-    { quiz_data: mcq('Which prompt will get the most useful response from Claude?', [
-      { text: '"Help me with CSS"' },
-      { text: '"Fix my code"' },
-      { text: '"You are a CSS expert. I have a div that should be centered on the page but it is aligned left. Here is my code: [code]. What is wrong and how do I fix it?"', correct: true },
-      { text: '"Make my website look better"' },
-    ], 'The third option includes role (CSS expert), context (centering problem), specific task (what is wrong), and the actual code. This gives Claude everything it needs to give a precise, useful answer.') }),
-
-    makeBlock(sid, 5, 'faq', 'Prompt Engineering FAQs', [], 'Common questions about prompting.', 5,
-    { faq_items: faqs([
-      { q: 'How long should a prompt be?', a: 'As long as it needs to be. Short prompts for simple tasks, detailed prompts for complex ones. There is no ideal length — clarity matters more than brevity.' },
-      { q: 'Should I always use the role technique?', a: 'Not always, but it helps for technical tasks. Telling Claude "you are an expert in X" tends to produce more focused, technical responses.' },
-      { q: 'What if Claude keeps giving me the wrong answer?', a: 'Try rephrasing. Add more context. Break the task into smaller parts. Or start a new conversation — sometimes the context of previous messages confuses the model.' },
-    ]) }),
-
-    makeBlock(sid, 6, 'wrapup', 'Day 6 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['The 4 elements of a great prompt: Role, Context, Task, Format', 'Iterative prompt refinement', 'Coding-specific prompt patterns', 'Built a hero section using only prompts']),
-      divider(),
-      h('Homework'),
-      p('Use the prompt patterns to ask Claude to explain something from your homework or job. Practice the role + context + task format.'),
-      callout('Tomorrow: Week 1 Review + Quiz + Group Activity. Come ready to show what you built this week.', 'info'),
-    ], 'Strong end to Week 1. Students now have AI as a genuine tool, not a toy.', 10),
-  ]
-}
-
-// ─── DAY 7: Week 1 Review ─────────────────────────────────────────────────────
-function day7Blocks(): Block[] {
-  const sid = S[6]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 7 — Week 1 Review + Quiz + Group Activity', [
-      h('Day 7 — Week 1 Review'),
-      p('You have completed Week 1. Today we consolidate everything before moving into HTML and CSS next week.'),
-      bullets(['Review all 6 days of content', 'Team quiz competition', 'Group activity: plan a mini project', 'Celebrate Week 1 completion']),
-      callout('Week 1 was about foundations. Week 2 is where you start building real things.', 'tip'),
-    ], 'High energy day. Set up teams before class. Have a small prize for the quiz winner if possible.', 10),
-
-    makeBlock(sid, 1, 'concept', 'Week 1 Recap', [
-      h('What You Learned This Week'),
-      bullets([
-        'Day 1: How computers work — input, process, output, files, folders',
-        'Day 2: File types, extensions, Browser DevTools',
-        'Day 3: Logic thinking — decomposition, if-then-else, loops, algorithms',
-        'Day 4: Flowcharts and wireframing — planning before building',
-        'Day 5: AI and Claude — what it is, what it is not, first HTML page',
-        'Day 6: Prompt engineering — role, context, task, format',
-      ]),
-      divider(),
-      h('The Big Picture'),
-      p('These 6 days gave you the mental model of a developer. You now think in steps, plan before building, and use AI as a tool.'),
-      callout('Most people who try to learn coding fail because they skip this foundation. You did not skip it.', 'tip'),
-    ], 'This recap is important. Students often underestimate how much they have learned. Make it concrete.', 15),
-
-    makeBlock(sid, 2, 'demo', 'Week 1 Knowledge Demo', [
-      h('Live Demo: Everything Connected'),
-      numbered([
-        'Open Claude.ai',
-        'Use a well-structured prompt to ask it to explain the difference between RAM and storage',
-        'Ask it to draw a flowchart (in text) for a user signing up to a website',
-        'Open DevTools on any website and find the navigation HTML',
-        'Show the CodeShala folder structure from Day 1',
-      ]),
-      callout('Notice how Days 1-6 all connect. The folder holds your files. DevTools shows the HTML. Claude helps you understand it. Prompts control what Claude gives you.', 'info'),
-    ], 'This connecting demo is powerful. Students see the week as a coherent whole, not isolated lessons.', 15),
-
-    makeBlock(sid, 3, 'activity', 'Team Quiz Competition', [
-      h('Activity: Week 1 Team Quiz'),
-      p('Split into teams of 3-4. 10 questions. First team to answer correctly wins the point.'),
-      bullets([
-        'Questions cover all 6 days',
-        'Teams discuss before answering — 30 seconds per question',
-        'Trainer reads questions aloud',
-        'Winning team gets bragging rights (and maybe a prize)',
-      ]),
-      callout('This is competitive but friendly. The goal is to surface gaps in understanding, not to embarrass anyone.', 'info'),
-    ], 'Use the quiz blocks below for the actual questions. Keep energy high. Move fast between questions.', 25,
-    { activity_data: activity('Team Quiz Competition', 'Team-based quiz covering all of Week 1. Teams of 3-4, 10 questions, 30 seconds per question.', 25, 'Keep energy high. Move fast. If a team gets it wrong, open it to other teams. Celebrate correct answers.', 'Students have reviewed and reinforced all Week 1 concepts through active recall.') }),
-
-    makeBlock(sid, 4, 'quiz', 'Week 1 Final Quiz', [], 'Use these questions for the team competition.', 10,
-    { quiz_data: mcq('Which of these is the BEST example of a well-structured prompt?', [
-      { text: '"Write code for me"' },
-      { text: '"You are a web developer. I am building a portfolio. Write HTML for a footer with my name and three social media links. Give only the HTML."', correct: true },
-      { text: '"Make a footer"' },
-      { text: '"HTML footer please"' },
-    ], 'The second option includes all 4 elements: Role (web developer), Context (portfolio), Task (footer with specific requirements), Format (only HTML). This is the prompt engineering framework from Day 6.') }),
-
-    makeBlock(sid, 5, 'faq', 'Week 1 Common Confusions', [], 'Address these if they come up in the review.', 5,
-    { faq_items: faqs([
-      { q: 'I am still confused about the difference between HTML, CSS, and JavaScript.', a: 'HTML is the structure (the bones). CSS is the styling (the skin and clothes). JavaScript is the behaviour (the muscles that make things move). We cover HTML on Day 8 and CSS on Day 9.' },
-      { q: 'Is Claude the same as ChatGPT?', a: 'They are different products from different companies (Claude is from Anthropic, ChatGPT is from OpenAI) but they work similarly. The prompting skills you learned work on both.' },
-      { q: 'I missed a day. How do I catch up?', a: 'Review the session content in this app for the day you missed. The key concepts are all here. Ask the trainer to clarify anything unclear at the start of the next session.' },
-    ]) }),
-
-    makeBlock(sid, 6, 'wrapup', 'Week 1 Complete!', [
-      h('Week 1 Complete — You Did It!'),
-      p('You have built the foundation that most self-taught developers never get. You think like a developer now.'),
-      bullets(['Computer basics and file management', 'Logic thinking and algorithms', 'Planning with flowcharts and wireframes', 'AI as a tool — Claude and prompt engineering']),
+    makeBlock(sid, 7, 'wrapup', 'Day 5 Wrap-Up — Week 1 Complete!', [
+      h('Week 1 Complete — Foundation Training Done'),
+      bullets(['Day 1: Tools and workflow', 'Day 2: AI prompting mastery', 'Day 3: Web basics + VS Code', 'Day 4: Project planning + requirements', 'Day 5: Git + Github version control']),
       divider(),
       h('Week 2 Preview'),
-      bullets(['Day 8: HTML — reading and understanding code', 'Day 9: CSS — styling without writing it', 'Day 10: VS Code setup + first file saved locally']),
-      callout('Rest this weekend. Week 2 is where you start building real web pages.', 'tip'),
-    ], 'Celebrate Week 1 completion. Take a class photo. Share next session time. Collect attendance.', 10),
+      bullets(['Day 6: Navigation + Hero Section', 'Day 7: Forms & User Input', 'Day 8: Content Sections', 'Day 9: Styling & Polish', 'Day 10: Error Handling & Debugging']),
+      callout('Week 2 is where you start building real components. Come ready to build.', 'tip'),
+    ], 'Celebrate Week 1 completion. Students now have everything they need to start building. The hard part is over — now comes the fun part.', 10),
   ]
 }
 
-// ─── DAYS 8-21: Remaining sessions (structured blocks) ────────────────────────
-
-function day8Blocks(): Block[] {
-  const sid = S[7]
+// ─── DAY 6: Navigation + Hero Section ────────────────────────────────────────
+function day6(): Block[] {
+  const sid = S[5]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 8 — HTML: Reading and Understanding Code', [
-      h('Day 8 — HTML: Reading and Understanding Code'),
-      p('HTML is the skeleton of every website. Today you learn to read it, understand it, and write it with AI help.'),
-      bullets(['What HTML tags are and how they work', 'The structure of every HTML page', 'Reading HTML in DevTools', 'Writing your first HTML file']),
-      callout('You do not need to memorise HTML tags. You need to understand the pattern. AI handles the rest.', 'tip'),
-    ], 'Students are excited to start "real coding". Channel that energy. Open a simple HTML file on the projector.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 6 — Navigation + Hero Section', [
+      h('Day 6 — Navigation + Hero Section'),
+      p('Week 2 starts now. Stop learning theory, start building. Today: the two most important components of any website.'),
+      bullets(['The development workflow you\'ll repeat for every component', 'Build a responsive navigation menu', 'Build an impactful hero section', 'CSS Flexbox basics and media queries']),
+      callout('The workflow: Define → Prompt Claude → Copy to VS Code → Test with Live Server → Refine → Commit → Push. Repeat for every feature.', 'tip'),
+    ], 'Write the workflow on the whiteboard. It stays there for all of Week 2. Students should internalise this loop.', 10),
 
-    makeBlock(sid, 1, 'concept', 'HTML Tags and Structure', [
-      h('HTML is Just Labels'),
-      p('HTML stands for HyperText Markup Language. It uses tags to label content.'),
-      code('<!DOCTYPE html>\n<html>\n  <head>\n    <title>My Page</title>\n  </head>\n  <body>\n    <h1>Hello World</h1>\n    <p>This is a paragraph.</p>\n  </body>\n</html>', 'html'),
+    makeBlock(sid, 1, 'concept', 'Navigation Menu — What You\'ll Build', [
+      h('Responsive Navigation Menu'),
+      bullets(['Horizontal links on desktop', 'Hamburger icon on mobile (3 lines)', 'Smooth toggle animation when hamburger is clicked', 'Sticky positioning (stays at top on scroll)', 'Active page highlighting']),
+      divider(),
+      h('Prompt Template'),
+      code('Create a responsive navigation menu:\n\nDESKTOP VIEW:\n- Logo on the left\n- Horizontal menu links on the right: [your links]\n- Sticky positioning (stays at top on scroll)\n- Smooth hover effects (underline animation)\n- Semi-transparent white background with backdrop blur\n\nMOBILE VIEW (below 768px):\n- Logo on left, hamburger icon on right\n- When clicked, menu slides down from top\n- Links stacked vertically\n\nSTYLING:\n- Modern, minimal design\n- Active link highlighted in [your colour]\n- Smooth transitions\n\nProvide complete HTML, CSS, and JavaScript in separate code blocks.', 'text'),
+    ], 'Show the prompt template. Emphasise that students should customise it with their own logo name, link labels, and colours.', 15),
+
+    makeBlock(sid, 2, 'concept', 'Hero Section — Design Principles', [
+      h('The Hero Section'),
+      p('The hero section is the first large section visitors see. It must grab attention immediately.'),
       bullets([
-        '<html> — the root of the page',
-        '<head> — metadata, title, links to CSS',
-        '<body> — everything visible on the page',
-        '<h1> to <h6> — headings (h1 is biggest)',
-        '<p> — paragraph',
-        '<a href="..."> — link',
-        '<img src="..."> — image',
-        '<div> — a container box',
+        'Attention-grabbing headline (6–10 words)',
+        'Supporting subtext (15–20 words)',
+        'Call-to-action (CTA) button: "Get Started", "Learn More", etc.',
+        'Background: gradient, solid colour, or image',
       ]),
-      callout('Tags come in pairs: opening <p> and closing </p>. The content goes between them.', 'info'),
-    ], 'Write this on the projector live. Explain each tag as you type it. Ask students to predict what each tag does.', 25),
-
-    makeBlock(sid, 2, 'demo', 'Build a Page Live', [
-      h('Live Demo: Build a Simple Bio Page'),
-      numbered([
-        'Open VS Code (or Notepad)',
-        'Type the HTML boilerplate structure',
-        'Add an h1 with your name',
-        'Add a p tag with a short bio',
-        'Add an unordered list of 3 hobbies',
-        'Save as bio.html in your Day8 folder',
-        'Open in browser — see your page',
-        'Open DevTools and find your h1 in the Elements panel',
-      ]),
-      callout('Every website you have ever visited started exactly like this — a blank file with HTML tags.', 'tip'),
-    ], 'Type slowly. Wait for students to follow along. The moment they see their page in the browser is always exciting.', 20),
-
-    makeBlock(sid, 3, 'activity', 'Build Your Bio Page', [
-      h('Activity: Build Your Bio Page'),
-      p('Using Claude and what you learned today, build a bio page about yourself.'),
+      divider(),
+      h('Design Principles'),
       bullets([
-        'Your name as the page title and h1',
-        'A short paragraph about yourself',
-        'A list of 3-5 things you are learning or interested in',
-        'At least one link (to any website)',
-        'Save as bio.html and open in browser',
+        'Visual Hierarchy: Headline largest → Subtext medium → CTA button contrasting',
+        'Contrast: Text must be readable against background',
+        'Whitespace: Give elements room to breathe',
+        'One focal point: One clear message, one primary action',
       ]),
-      callout('Use Claude to help with any tags you are unsure about. Prompt: "How do I add a link in HTML?"', 'tip'),
-    ], 'Walk around and check progress. Common issues: forgetting to close tags, saving as .txt instead of .html.', 20,
-    { activity_data: activity('Build Your Bio Page', 'Build an HTML bio page with your name, a paragraph, a list, and a link.', 20, 'Check file extensions. Help with tag closing issues. Celebrate when pages open in browser.', 'Every student has a working bio.html file that opens correctly in a browser.') }),
+      code('/* Option A: CSS background image */\n.hero {\n  background-image: url(\'../images/hero-bg.jpg\');\n  background-size: cover;\n  background-position: center;\n}\n\n/* Option B: Gradient (no image needed) */\n.hero {\n  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n}', 'css'),
+      callout('Free stock photos: unsplash.com, pexels.com. Gradients are simpler and faster to load.', 'info'),
+    ], 'Show examples of good and bad hero sections from real websites. Students learn design by seeing.', 15),
 
-    makeBlock(sid, 4, 'quiz', 'HTML Quiz', [], 'Quick HTML check.', 5,
-    { quiz_data: mcq('What does the <a> tag do in HTML?', [
-      { text: 'Creates a heading' },
-      { text: 'Creates a paragraph' },
-      { text: 'Creates a clickable link', correct: true },
-      { text: 'Creates an image' },
-    ], 'The <a> tag (anchor tag) creates hyperlinks. The href attribute specifies where the link goes: <a href="https://google.com">Click here</a>') }),
+    makeBlock(sid, 3, 'demo', 'CSS Flexbox + Media Queries', [
+      h('Key CSS Concepts for Today'),
+      h('Flexbox — Arranging Elements'),
+      code('.container {\n  display: flex;\n  justify-content: center;   /* Horizontal alignment */\n  align-items: center;       /* Vertical alignment */\n  flex-direction: row;       /* Row or column */\n}', 'css'),
+      divider(),
+      h('Media Queries — Responsive Design'),
+      code('/* Applies only on screens smaller than 768px */\n@media (max-width: 768px) {\n  .nav-links { display: none; }\n  .hamburger { display: block; }\n}', 'css'),
+      callout('You don\'t need to memorise these. Recognise them when Claude uses them. Ask Claude to explain any CSS you don\'t understand.', 'info'),
+    ], 'Show these in a real file. Point to where Claude uses them in the navigation code. Connect theory to practice immediately.', 10),
 
-    makeBlock(sid, 5, 'faq', 'HTML FAQs', [], 'Common HTML questions.', 5,
+    makeBlock(sid, 4, 'activity', 'Build Navigation + Hero Section', [
+      h('Hands-on Task: Both Components Working + Committed'),
+      h('Navigation (45 mins)'),
+      numbered(['Write your spec (logo name, link labels, colours)', 'Prompt Claude using the template above', 'Implement in VS Code (HTML → CSS → JS)', 'Test desktop view + mobile hamburger toggle', 'Refine any issues with Claude', 'Commit: "Add responsive navigation menu with mobile hamburger"']),
+      divider(),
+      h('Hero Section (45 mins)'),
+      numbered(['Write your headline, subtext, and CTA text', 'Choose: gradient, solid, or image background', 'Prompt Claude using the template', 'Implement below navigation in index.html', 'Test responsiveness on multiple sizes', 'Get one person\'s feedback ("What\'s your first impression?")', 'Commit: "Add hero section with headline, CTA, and responsive design"']),
+    ], 'Walk around constantly. Students will have very different results — that\'s good. Encourage personalisation. Help with hamburger toggle issues (most common problem).', 90,
+    { activity_data: activity('Build Navigation + Hero Section', 'Build both components, test responsiveness, get feedback, commit to Github.', 90, 'Walk the room. Help with hamburger toggle issues. Encourage personalisation. Ensure everyone commits before leaving.', 'Navigation desktop horizontal + mobile hamburger working. Hero headline clear and impactful. Both responsive and committed to Github.') }),
+
+    makeBlock(sid, 5, 'quiz', 'Day 6 Knowledge Check', [], 'Responsive design check.', 5,
+    { quiz_data: mcq('Media queries are used for:', [
+      { text: 'Contacting the press' },
+      { text: 'Asking Claude questions' },
+      { text: 'Applying different styles at different screen sizes', correct: true },
+      { text: 'Database queries' },
+    ], 'Media queries let you apply different CSS rules based on screen size. @media (max-width: 768px) means "apply these styles on screens 768px wide or smaller" — typically phones and small tablets.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 6 FAQs', [], 'Common component building questions.', 5,
     { faq_items: faqs([
-      { q: 'Do I need to memorise all HTML tags?', a: 'No. Professional developers look up tags all the time. You need to understand the pattern (opening tag, content, closing tag) and know the most common 10-15 tags. AI handles the rest.' },
-      { q: 'What happens if I forget to close a tag?', a: 'The browser tries to fix it, but the result is unpredictable. Always close your tags. VS Code will highlight unclosed tags.' },
-      { q: 'What is the difference between <div> and <section>?', a: 'Both are container elements. <div> is generic. <section> has semantic meaning — it tells the browser this is a distinct section of content. Use semantic tags when possible.' },
+      { q: 'Do I need to understand every line of code?', a: 'Understand the overall flow and key parts. For now, focus on "what it does" not "exact syntax." Understanding improves with practice.' },
+      { q: 'What if my hero section looks different to what I expected?', a: 'Refine with Claude! Describe what you want changed specifically. Iteration is normal — most features take 2-4 rounds.' },
+      { q: 'Should I use images or gradients?', a: 'Gradients are simpler and faster to load. Use images only if they\'re highly relevant to your project.' },
+      { q: 'Can I have multiple CTA buttons?', a: 'One primary CTA is best. If needed, make secondary actions less prominent (outline button vs solid).' },
+      { q: 'How do I know if code is "good"?', a: 'Ask Claude: "Review this code. Is it following best practices? Any improvements?" It will give you honest feedback.' },
     ]) }),
 
-    makeBlock(sid, 6, 'wrapup', 'Day 8 Wrap-Up', [
+    makeBlock(sid, 7, 'wrapup', 'Day 6 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['HTML tag structure — opening, content, closing', 'The anatomy of an HTML page: DOCTYPE, html, head, body', 'Common tags: h1-h6, p, a, img, div, ul, li', 'Built a working bio page']),
+      bullets(['The development workflow: Define → Prompt → Implement → Test → Refine → Commit', 'Responsive navigation with hamburger menu', 'Hero section with visual hierarchy', 'CSS Flexbox and media queries']),
       divider(),
       h('Homework'),
-      p('Add an image to your bio page. Use Claude to find out how. Hint: the <img> tag.'),
-      callout('Tomorrow: CSS — making your page look good without writing much CSS yourself.', 'info'),
-    ], 'Students have their first real HTML file. This is a milestone. Celebrate it.', 10),
+      p('Show your hero section to someone outside the class. Ask: "What\'s your first impression? What do you think this site is for?" Their answer tells you if your message is clear.'),
+      callout('Tomorrow: Forms & User Input. You\'ll build the interactive heart of your project.', 'info'),
+    ], 'Students have their first real components. This is a proud moment. Take screenshots of everyone\'s hero sections.', 10),
   ]
 }
 
-function day9Blocks(): Block[] {
-  const sid = S[8]
+// ─── DAY 7: Forms & User Input ────────────────────────────────────────────────
+function day7(): Block[] {
+  const sid = S[6]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 9 — CSS: Styling Without Writing It', [
-      h('Day 9 — CSS: Styling Without Writing It'),
-      p('CSS makes your HTML look good. Today you learn to read CSS, understand it, and use AI to write it for you.'),
-      bullets(['How CSS connects to HTML', 'Selectors, properties, and values', 'Colors, fonts, spacing, layout basics', 'Using Claude to generate CSS']),
-      callout('CSS has thousands of properties. You do not need to know them all. You need to know how to describe what you want.', 'tip'),
-    ], 'Open the bio page from Day 8 on the projector. It looks plain. Today we make it look good.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 7 — Forms & User Input', [
+      h('Day 7 — Forms & User Input'),
+      p('Forms are how users interact with your website beyond clicking links. They enable contact, sign-ups, search, and data submission.'),
+      bullets(['Form anatomy and common input types', 'HTML5 built-in validation', '3 approaches to form submission', 'Form UX best practices']),
+      callout('For your project: likely a contact form, session creation form, or search. Check your requirements document.', 'info'),
+    ], 'Ask students: "What forms have you filled in online today?" Login, search, checkout — forms are everywhere. Today you build them.', 10),
 
-    makeBlock(sid, 1, 'concept', 'How CSS Works', [
-      h('CSS: Selector + Property + Value'),
-      p('Every CSS rule follows the same pattern:'),
-      code('selector {\n  property: value;\n  property: value;\n}', 'css'),
-      p('Example:'),
-      code('h1 {\n  color: purple;\n  font-size: 48px;\n  font-family: Arial;\n}', 'css'),
+    makeBlock(sid, 1, 'concept', 'Form Anatomy + Input Types', [
+      h('Form Anatomy'),
+      code('<form id="contactForm">\n  <label for="name">Full Name</label>\n  <input type="text" id="name" name="name" placeholder="Your Name" required>\n\n  <label for="email">Email Address</label>\n  <input type="email" id="email" name="email" placeholder="Email" required>\n\n  <label for="message">Message</label>\n  <textarea id="message" name="message" placeholder="Your Message" required></textarea>\n\n  <button type="submit">Send Message</button>\n</form>', 'html'),
+      divider(),
+      h('Common Input Types'),
       bullets([
-        'h1 — the selector (which element to style)',
-        'color — the property (what to change)',
-        'purple — the value (what to change it to)',
+        'type="text" — General text',
+        'type="email" — Email (auto-validates format)',
+        'type="tel" — Phone number',
+        'type="number" — Numeric input',
+        'type="date" — Date picker',
+        'type="password" — Hidden text',
+        'type="checkbox" — Check boxes',
+        'type="radio" — Single-choice options',
+      ]),
+    ], 'Show a real form in the browser. Open DevTools and inspect the input elements. Students should see the connection between HTML and what they see on screen.', 20),
+
+    makeBlock(sid, 2, 'concept', 'Validation + 3 Submission Approaches', [
+      h('HTML5 Built-in Validation (Free, No Code Needed)'),
+      code('<input type="email" required>\n<input type="text" minlength="3" maxlength="50">\n<input type="number" min="1" max="100">', 'html'),
+      divider(),
+      h('3 Approaches to Form Submission'),
+      bullets([
+        'Option 1: FormSpree (Easiest) — Free service that emails you submissions. No backend needed. Sign up at formspree.io.',
+        'Option 2: localStorage (Great for practice) — Saves data in the browser. Perfect for session lists, to-do items, form drafts.',
+        'Option 3: Display Only (Simplest) — Form validates but doesn\'t send anywhere. Shows success message. Perfect for learning UX.',
       ]),
       divider(),
-      h('Connecting CSS to HTML'),
-      code('<head>\n  <link rel="stylesheet" href="style.css">\n</head>', 'html'),
-      callout('Create a separate style.css file and link it in the <head>. This keeps your HTML and CSS organised.', 'info'),
-    ], 'Write this live. Show the immediate visual change when CSS is applied. Students love seeing instant results.', 25),
-
-    makeBlock(sid, 2, 'demo', 'Style the Bio Page', [
-      h('Live Demo: Transform the Bio Page'),
-      numbered([
-        'Create style.css in the same folder as bio.html',
-        'Link it in the <head> of bio.html',
-        'Add: body { background-color: #1a1a1a; color: white; font-family: Arial; }',
-        'Add: h1 { color: #6c63ff; font-size: 48px; }',
-        'Add: p { font-size: 18px; line-height: 1.6; }',
-        'Save and refresh the browser',
-        'Now use Claude: "Add CSS to center all content and add padding"',
-        'Paste the CSS and refresh again',
-      ]),
-      callout('Notice how we used Claude for the layout CSS. Describe what you want, get the code, paste it in.', 'tip'),
-    ], 'The transformation from plain HTML to styled page is always impressive. Let students react.', 20),
-
-    makeBlock(sid, 3, 'activity', 'Style Your Bio Page', [
-      h('Activity: Make Your Bio Page Look Great'),
-      p('Use CSS (with Claude\'s help) to style your bio page.'),
+      h('Form UX Best Practices'),
       bullets([
-        'Change the background color and text color',
-        'Style your h1 with a different color and larger font',
-        'Add padding and margin to make it breathe',
-        'Center the content on the page',
-        'Add a hover effect to your link',
+        'DO: Clear labels above each field, helpful placeholder text, mark required fields (*), show validation errors clearly, confirm successful submission',
+        'DON\'T: Hide error messages, use confusing labels, make inputs too small to tap on mobile, require unnecessary information',
       ]),
-      callout('Prompt Claude: "Write CSS to [describe what you want]. Here is my current HTML: [paste HTML]"', 'tip'),
-    ], 'Walk around. Students will have very different results — celebrate the variety. Common issue: CSS not linking correctly.', 20,
-    { activity_data: activity('Style Your Bio Page', 'Use CSS and Claude to style your bio page with colors, fonts, spacing, and layout.', 20, 'Check that style.css is linked correctly. Help with selector issues. Celebrate creative designs.', 'Every student has a styled bio page with custom colors, fonts, and layout.') }),
+    ], 'Show FormSpree setup live. It takes 2 minutes and students can receive real emails from their forms. This makes the project feel real.', 20),
 
-    makeBlock(sid, 4, 'quiz', 'CSS Quiz', [], 'CSS fundamentals check.', 5,
-    { quiz_data: mcq('In CSS, what does this rule do?  p { color: red; }', [
-      { text: 'Makes all paragraphs have a red background' },
-      { text: 'Makes all paragraphs have red text', correct: true },
-      { text: 'Makes all elements with class "p" red' },
-      { text: 'Makes the page border red' },
-    ], 'The selector "p" targets all <p> (paragraph) elements. The property "color" changes text color. So all paragraph text becomes red. To change background, you would use "background-color: red" instead.') }),
+    makeBlock(sid, 3, 'demo', 'Build a Form with Claude', [
+      h('Prompt Template for Forms'),
+      code('Create a [form type] with these specifications:\n\nFIELDS:\n1. [Field name]: [type], [required/optional], [constraints]\n2. [Field name]: [type], [required/optional], [constraints]\n\nVALIDATION:\n- All required fields must be filled before submission\n- Email must be valid format\n- [Any custom rules]\n\nDESIGN:\n- Modern, clean form design\n- Clear labels above each field\n- Visible red error messages below invalid fields\n- Prominent submit button\n- Success message after submission\n\nFUNCTIONALITY:\n- [FormSpree / localStorage / display only]\n- Prevent submission if validation fails\n- Clear form after successful submission\n\nRESPONSIVE:\n- Full-width inputs on mobile\n- Comfortable touch-friendly spacing\n\nProvide complete HTML, CSS, and JavaScript.', 'text'),
+    ], 'Build a contact form live using this template. Show the full cycle: prompt → code → implement → test validation → test submission.', 15),
 
-    makeBlock(sid, 5, 'faq', 'CSS FAQs', [], 'Common CSS questions.', 5,
+    makeBlock(sid, 4, 'activity', 'Build a Functional, Validated Form', [
+      h('Hands-on Task: Working Form + Committed to Github'),
+      numbered([
+        'Choose your form type based on your project requirements',
+        'List all fields with types, required/optional status, and validation rules',
+        'Choose submission method (FormSpree recommended for contact forms)',
+        'Prompt Claude using the template above',
+        'Implement HTML, CSS, and JS in your project',
+        'Test: Submit empty → errors appear. Invalid email → email error. Fill correctly → success message. Test on mobile via DevTools.',
+        'Have someone else use the form and watch where they get confused',
+        'Refine based on feedback',
+        'Commit: "Add [form type] with validation and success confirmation"',
+      ]),
+    ], 'Walk around. Test each student\'s form yourself. Common issues: validation not triggering, success message not showing, form not clearing after submit.', 50,
+    { activity_data: activity('Build a Functional, Validated Form', 'Build a form with validation, test all scenarios, user-test with one person, commit to Github.', 50, 'Test each student\'s form. Check all validation paths. Ensure mobile responsiveness. Help with FormSpree setup.', 'Form validates correctly, error messages clear, success confirmation shows, responsive on mobile, user-tested, committed to Github.') }),
+
+    makeBlock(sid, 5, 'quiz', 'Day 7 Knowledge Check', [], 'Forms check.', 5,
+    { quiz_data: mcq('Where does localStorage save data?', [
+      { text: 'On the server' },
+      { text: 'In the cloud' },
+      { text: 'In the user\'s browser', correct: true },
+      { text: 'In a database' },
+    ], 'localStorage saves data in the user\'s browser. It persists across page refreshes but is browser-specific — data doesn\'t sync across devices. It\'s perfect for this course\'s projects.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 7 FAQs', [], 'Common form questions.', 5,
     { faq_items: faqs([
-      { q: 'What is the difference between margin and padding?', a: 'Padding is space inside the element (between content and border). Margin is space outside the element (between the element and other elements). Think of a picture frame: padding is the mat inside the frame, margin is the wall space around the frame.' },
-      { q: 'Why is my CSS not working?', a: 'Check: 1) Is the CSS file linked correctly in the HTML head? 2) Is the selector correct? 3) Did you save both files? 4) Did you refresh the browser? These cover 90% of CSS issues.' },
-      { q: 'Should I write CSS myself or always use Claude?', a: 'Both. Understanding CSS properties helps you give better prompts and debug issues. But for complex layouts, using Claude is faster and more reliable than writing from scratch.' },
+      { q: 'Do I need a database for forms?', a: 'Not for this course. Use FormSpree for contact forms or localStorage for practice. A real database is a separate skillset.' },
+      { q: 'What if users submit spam?', a: 'For learning, not a concern. In production, use Google reCAPTCHA. FormSpree also has basic spam filtering.' },
+      { q: 'Can forms work without JavaScript?', a: 'Basic forms yes, but modern validation and UX features require JavaScript. Claude will generate the JS for you.' },
+      { q: 'How do I receive form submissions?', a: 'FormSpree emails them to you. It\'s the simplest solution for static websites with no backend.' },
+      { q: 'How do I style error messages?', a: 'Claude will include CSS for error states. Typically: red text, small font, appears below the field. Ask Claude to adjust the style if needed.' },
+    ]) }),
+
+    makeBlock(sid, 7, 'wrapup', 'Day 7 Wrap-Up', [
+      h('What We Covered Today'),
+      bullets(['Form anatomy: labels, inputs, textarea, submit button', 'Common input types and HTML5 validation', '3 submission approaches: FormSpree, localStorage, display only', 'Form UX best practices']),
+      divider(),
+      h('Homework'),
+      p('Test your form on your actual phone (not just DevTools). Are the inputs big enough to tap? Does the keyboard cover the form? Fix anything that feels awkward.'),
+      callout('Tomorrow: Content Sections — Cards, Lists & Data Display. The core of your project.', 'info'),
+    ], 'Students now have interactive forms. Their projects are starting to feel real. Celebrate the progress.', 10),
+  ]
+}
+
+// ─── DAY 8: Content Sections ──────────────────────────────────────────────────
+function day8(): Block[] {
+  const sid = S[7]
+  return [
+    makeBlock(sid, 0, 'intro', 'Day 8 — Content Sections: Cards, Lists & Data Display', [
+      h('Day 8 — Content Sections: Cards, Lists & Data Display'),
+      p('Content sections are the core of your website — where your main information lives. After the hero grabs attention, content sections deliver on the promise.'),
+      bullets(['Build reusable card components', 'CSS Grid for responsive layouts', 'Filtering and search functionality', 'localStorage for dynamic content']),
+      callout('Cards are the most reusable UI pattern. Master them and you can build almost any content section.', 'tip'),
+    ], 'Show examples of card-based UIs: Airbnb listings, Netflix thumbnails, LinkedIn posts. Students recognise these immediately.', 10),
+
+    makeBlock(sid, 1, 'concept', 'Card Components + CSS Grid', [
+      h('Anatomy of a Card'),
+      code('<div class="card">\n  <img src="images/thumbnail.jpg" alt="Description" class="card-img">\n  <div class="card-body">\n    <span class="card-tag">Category</span>\n    <h3 class="card-title">Title Here</h3>\n    <p class="card-text">Brief description goes here...</p>\n    <div class="card-meta">\n      <span>📅 Date</span>\n      <span>📍 Location</span>\n    </div>\n    <button class="card-btn">Action</button>\n  </div>\n</div>', 'html'),
+      divider(),
+      h('CSS Grid — Responsive Without Media Queries'),
+      code('.card-grid {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));\n  gap: 24px;\n  padding: 40px 20px;\n}', 'css'),
+      callout('This single CSS rule automatically creates as many columns as fit, and collapses to 1 column on mobile. No media query needed!', 'tip'),
+    ], 'Show the grid in action by resizing the browser. Students are always impressed by how auto-fit works.', 20),
+
+    makeBlock(sid, 2, 'concept', 'Filtering, Search + localStorage Cards', [
+      h('Adding Search Functionality'),
+      code('// Claude will generate something like this\nsearchInput.addEventListener(\'input\', function() {\n  const query = this.value.toLowerCase();\n  cards.forEach(card => {\n    const title = card.querySelector(\'.card-title\').textContent.toLowerCase();\n    card.style.display = title.includes(query) ? \'block\' : \'none\';\n  });\n});', 'javascript'),
+      divider(),
+      h('Dynamic Cards with localStorage'),
+      p('If your project lets users add content (sessions, listings, to-do items):'),
+      bullets([
+        'Reads items from localStorage and displays them as cards',
+        'Has an "Add New" button that opens your form',
+        'When a new item is saved, the card grid automatically updates',
+        'Each card has a "Delete" button',
+        'Shows a friendly empty state when there are no items',
+      ]),
+    ], 'Show the localStorage cycle live: add an item via form → see it appear as a card → delete it → empty state shows. This is the core interaction of many student projects.', 20),
+
+    makeBlock(sid, 3, 'demo', 'Prompt Templates for Content Sections', [
+      h('Prompt Template: Cards + Grid'),
+      code('Create a content section for my [project type]:\n\nSECTION PURPOSE:\n[What this section displays]\n\nCARD CONTENT (each card shows):\n- [Field 1]\n- [Field 2]\n- [Field 3]\n- [Action button text]\n\nSAMPLE DATA:\nInclude 6 sample cards with realistic content\n\nLAYOUT:\n- CSS Grid: 3 columns desktop, 2 tablet, 1 mobile\n- Cards have subtle shadow and hover lift effect\n\nFILTERING (if needed):\n- Filter buttons above the grid (by category)\n- "All" button shows everything\n\nSTYLE:\n- Match this colour scheme: [your colours]\n\nProvide complete HTML, CSS, and JavaScript.', 'text'),
+    ], 'Build a card section live using this template. Show the filtering working. Students should see the full component before building their own.', 15),
+
+    makeBlock(sid, 4, 'activity', 'Build Your Core Content Section', [
+      h('Hands-on Task: Card Grid + Filtering + Committed'),
+      numbered([
+        'Identify what your content section displays (from your requirements doc)',
+        'Write the spec: what does each card/item show?',
+        'Decide: do you need filtering? Search? Dynamic add/delete?',
+        'Prompt Claude using the template above',
+        'Implement in VS Code — test with Live Server',
+        'If using localStorage: test the full cycle (add item → see card → delete card)',
+        'Check responsiveness: desktop grid → tablet → mobile',
+        'Refine any visual inconsistencies',
+        'Commit: "Add [content type] grid section with filtering"',
+      ]),
+    ], 'This is a substantial build. Walk around constantly. Help with localStorage issues — they\'re the most complex part. Celebrate when the add/delete cycle works.', 60,
+    { activity_data: activity('Build Core Content Section', 'Build card grid with filtering or search, test localStorage cycle if applicable, commit to Github.', 60, 'Help with localStorage issues. Check grid responsiveness. Ensure filtering works correctly.', 'Cards display with realistic content, grid responsive, filtering/search works, localStorage cycle complete if applicable, committed to Github.') }),
+
+    makeBlock(sid, 5, 'quiz', 'Day 8 Knowledge Check', [], 'Content sections check.', 5,
+    { quiz_data: mcq('What does `display: none` do to a card?', [
+      { text: 'Deletes it permanently from the HTML' },
+      { text: 'Hides it visually but keeps it in the HTML', correct: true },
+      { text: 'Makes it transparent' },
+      { text: 'Moves it off screen' },
+    ], 'display: none hides the element visually but it remains in the HTML. This is how filtering works — cards are hidden/shown based on the filter, not added/removed from the DOM.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 8 FAQs', [], 'Common content section questions.', 5,
+    { faq_items: faqs([
+      { q: 'What if I don\'t have real data yet?', a: 'Ask Claude to generate realistic sample data for your project type. It\'s perfect for prototyping and makes the UI look complete.' },
+      { q: 'How do I add real images to cards?', a: 'Save images to your images/ folder and update the src path in the HTML. Use unsplash.com for free stock photos.' },
+      { q: 'Is localStorage permanent?', a: 'It persists until the user clears their browser data. It\'s browser-specific — data doesn\'t sync across devices. Perfect for this course.' },
+      { q: 'My grid doesn\'t look even. How do I fix it?', a: 'Ask Claude: "My CSS Grid cards have uneven heights. How do I make all cards in a row the same height?" Hint: align-items: stretch on the grid container.' },
+      { q: 'How do I make cards link to detail pages?', a: 'Wrap the card in an <a> tag, or add an onclick handler. For now, this is an extension challenge — focus on the grid first.' },
+    ]) }),
+
+    makeBlock(sid, 7, 'wrapup', 'Day 8 Wrap-Up', [
+      h('What We Covered Today'),
+      bullets(['Card component anatomy', 'CSS Grid with auto-fit for responsive layouts', 'Client-side filtering and search', 'localStorage for dynamic add/delete']),
+      divider(),
+      h('Homework'),
+      p('Add 3 more sample cards to your grid. Make sure they all look consistent. If using localStorage, test adding and deleting items on your phone.'),
+      callout('Tomorrow: Styling, Animations & Responsive Polish. Your site goes from functional to professional.', 'info'),
+    ], 'Students now have the core of their project working. The site is starting to look like a real product.', 10),
+  ]
+}
+
+// ─── DAY 9: Styling, Animations & Responsive Polish ──────────────────────────
+function day9(): Block[] {
+  const sid = S[8]
+  return [
+    makeBlock(sid, 0, 'intro', 'Day 9 — Styling, Animations & Responsive Polish', [
+      h('Day 9 — Styling, Animations & Responsive Polish'),
+      p('A site that works is good. A site that works AND feels good to use is memorable. Today you transform your functional components into a polished, professional product.'),
+      bullets(['CSS variables — your design system', 'Hover effects and micro-interactions', 'Scroll-triggered animations', 'Full responsiveness audit + footer']),
+      callout('The difference: Unpolished = inconsistent colours, abrupt transitions, awkward spacing. Polished = consistent typography, smooth animations, perfect spacing.', 'info'),
+    ], 'Show a before/after of a polished vs unpolished version of the same site. The difference is dramatic and motivating.', 10),
+
+    makeBlock(sid, 1, 'concept', 'CSS Variables — Your Design System', [
+      h('Define Once, Use Everywhere'),
+      code(':root {\n  /* Colours */\n  --primary: #2563eb;\n  --primary-dark: #1d4ed8;\n  --secondary: #10b981;\n  --text-dark: #1f2937;\n  --text-light: #6b7280;\n  --bg-white: #ffffff;\n  --bg-light: #f9fafb;\n  --border: #e5e7eb;\n\n  /* Typography */\n  --font-base: \'Inter\', sans-serif;\n  --text-base: 1rem;\n  --text-lg: 1.125rem;\n  --text-xl: 1.25rem;\n  --text-2xl: 1.5rem;\n  --text-4xl: 2.25rem;\n\n  /* Other */\n  --radius: 8px;\n  --radius-lg: 16px;\n  --shadow: 0 1px 3px rgba(0,0,0,0.12);\n  --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);\n  --transition: 0.3s ease;\n}', 'css'),
+      callout('Prompt: "Create a CSS variables design system for my [project type]. I want a [modern/professional/minimal] style with a [your colour] accent."', 'tip'),
+    ], 'Show how changing one variable updates the entire site. This is the power of a design system.', 15),
+
+    makeBlock(sid, 2, 'concept', 'Animations + Responsiveness', [
+      h('Hover Effects (CSS Only)'),
+      code('.card {\n  transition: transform var(--transition), box-shadow var(--transition);\n}\n.card:hover {\n  transform: translateY(-4px);\n  box-shadow: var(--shadow-lg);\n}\n\n.btn:hover {\n  background: var(--primary-dark);\n  transform: scale(1.02);\n}', 'css'),
+      divider(),
+      h('Responsiveness Checklist'),
+      bullets(['320px — Mobile S: Text readable, no horizontal scroll', '375px — Mobile M: Most common phone size', '768px — Tablet: Grid adjusts, nav changes', '1024px — Laptop: Desktop layout begins', '1440px — Desktop: Wide screen looks balanced']),
+      divider(),
+      h('Typography Polish'),
+      bullets(['Maximum 2 fonts: one for headings, one for body', 'Body text: minimum 16px', 'Line height: 1.5–1.7 for body', 'Paragraph max-width: 65ch for readability']),
+      callout('Always animate transform and opacity — never width, height, margin, or top/left. Claude will use the right properties.', 'warning'),
+    ], 'Show the responsiveness checklist in DevTools. Test a student\'s site live at each breakpoint. Find and fix issues together.', 20),
+
+    makeBlock(sid, 3, 'activity', 'Full Design Polish Pass', [
+      h('Hands-on Task: Visually Consistent, Animated, Fully Responsive Site'),
+      numbered([
+        'Design System (20 mins): Generate CSS variables and apply them across all CSS files. Replace any hardcoded colours or sizes.',
+        'Animations (20 mins): Add hover effects to cards and buttons. Add scroll fade-in to main sections.',
+        'Responsiveness audit (30 mins): Test every page at every breakpoint. List all issues found.',
+        'Fix all responsiveness issues (20 mins): Prompt Claude with each specific issue.',
+        'Typography (15 mins): Apply Google Fonts and proper type scale.',
+        'Footer (15 mins): Build and add footer.',
+        'Final visual review: Open your site and scroll through. Does it look professional?',
+        'Commit: "Polish: design system, animations, responsive fixes, footer"',
+      ]),
+    ], 'This is a creative session. Encourage experimentation. Walk around and give design feedback. This is where sites go from good to great.', 90,
+    { activity_data: activity('Full Design Polish Pass', 'Apply CSS variables, animations, responsive fixes, typography, and footer. Commit everything.', 90, 'Give design feedback. Encourage subtlety over flashiness. Help with colour contrast and readability issues.', 'CSS variables used consistently, hover animations on cards and buttons, no layout breaks at any breakpoint, footer present, typography clean, committed to Github.') }),
+
+    makeBlock(sid, 4, 'quiz', 'Day 9 Knowledge Check', [], 'Design polish check.', 5,
+    { quiz_data: mcq('What are CSS variables used for?', [
+      { text: 'Storing JavaScript data' },
+      { text: 'Defining reusable design tokens like colours, spacing, and fonts', correct: true },
+      { text: 'Creating animations' },
+      { text: 'Setting page size' },
+    ], 'CSS variables (custom properties) let you define values once and reuse them everywhere. Change --primary once and every element using it updates automatically. This is the foundation of a design system.') }),
+
+    makeBlock(sid, 5, 'faq', 'Day 9 FAQs', [], 'Common polish questions.', 5,
+    { faq_items: faqs([
+      { q: 'How many animations are too many?', a: 'If the user notices the animations more than the content, that\'s too many. Aim for subtle and purposeful. Less is more.' },
+      { q: 'Should I use a CSS framework like Bootstrap?', a: 'For this course, pure CSS is better for learning. Bootstrap is great for speed later, but it can hide important concepts.' },
+      { q: 'How do I import Google Fonts?', a: 'Ask Claude: "How do I add [Font Name] from Google Fonts to my HTML and CSS?" It will give you the exact link and CSS.' },
+      { q: 'My animations feel choppy. Why?', a: 'Always animate transform and opacity — never width, height, margin, or top/left. Claude will use the right properties if you ask it to.' },
+      { q: 'What\'s the minimum colour contrast for readability?', a: 'WCAG standard is 4.5:1 for normal text. Ask Claude: "Check if my text colour [X] on background [Y] meets accessibility contrast standards."' },
     ]) }),
 
     makeBlock(sid, 6, 'wrapup', 'Day 9 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['CSS syntax: selector, property, value', 'Linking CSS to HTML', 'Colors, fonts, spacing, centering', 'Using Claude to generate CSS from descriptions']),
+      bullets(['CSS variables for a consistent design system', 'Hover effects and scroll animations', 'Full responsiveness audit and fixes', 'Typography polish and footer']),
       divider(),
       h('Homework'),
-      p('Make your bio page look like a real portfolio page. Use Claude to add a navigation bar at the top.'),
-      callout('Tomorrow: VS Code setup. We move from Notepad to a professional code editor.', 'info'),
-    ], 'Students now have a styled page. The progress from Day 8 to Day 9 is visible and motivating.', 10),
+      p('Show your polished site to someone outside the class. Ask: "Does this look professional? Would you trust this site?" Their answer tells you if the polish worked.'),
+      callout('Tomorrow: Error Handling, Debugging & Code Review. Clean up before the final sprint.', 'info'),
+    ], 'Sites are now polished and professional. This is a proud moment. Take screenshots before tomorrow\'s changes.', 10),
   ]
 }
 
-function day10Blocks(): Block[] {
+// ─── DAY 10: Error Handling, Debugging & Code Review ─────────────────────────
+function day10(): Block[] {
   const sid = S[9]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 10 — VS Code Setup + First File Saved Locally', [
-      h('Day 10 — VS Code Setup + First File Saved Locally'),
-      p('Today you set up the tool that professional developers use every day: Visual Studio Code.'),
-      bullets(['Install and configure VS Code', 'Essential extensions for web development', 'Open your project folder in VS Code', 'Live Server — see changes instantly']),
-      callout('VS Code is free, used by over 70% of developers worldwide, and works on Windows, Mac, and Linux.', 'info'),
-    ], 'Check that all students can download VS Code. Some may need admin permissions on school/work computers.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 10 — Error Handling, Debugging & Code Review', [
+      h('Day 10 — Error Handling, Debugging & Code Review'),
+      p('Every developer encounters errors. The difference between beginners and professionals is not that professionals don\'t get errors — it\'s that they know how to find and fix them quickly.'),
+      bullets(['4 types of errors you\'ll encounter', 'Browser DevTools — your debugging superpower', 'The debugging process', 'Code review with Claude']),
+      callout('Today you clean up your project before the final sprint. A clean codebase is faster to build on.', 'info'),
+    ], 'Ask: "Has anyone had code that didn\'t work this week?" Everyone has. Today you learn to fix it systematically.', 10),
 
-    makeBlock(sid, 1, 'concept', 'Why VS Code?', [
-      h('VS Code vs Notepad'),
+    makeBlock(sid, 1, 'concept', '4 Types of Errors + DevTools', [
+      h('4 Types of Errors'),
       bullets([
-        'Syntax highlighting — code is colour-coded for readability',
-        'Auto-complete — suggests code as you type',
-        'Error detection — underlines mistakes before you run the code',
-        'Extensions — add features like live preview, Git integration',
-        'Integrated terminal — run commands without leaving the editor',
-        'Multi-file projects — see all your files in a sidebar',
+        'HTML Errors: Unclosed tags, incorrect file paths, missing required attributes',
+        'CSS Errors: Typos in property names, wrong selector, units missing (20 instead of 20px)',
+        'JavaScript Errors: Missing brackets, null errors, event listeners not attached',
+        'Layout Errors: Content overflowing, elements overlapping, broken responsiveness',
       ]),
-      callout('Notepad is a text editor. VS Code is a development environment. The difference is like writing with a pencil vs using a word processor.', 'info'),
       divider(),
-      h('Essential Extensions to Install'),
+      h('Browser DevTools — Open with F12'),
       bullets([
-        'Prettier — auto-formats your code',
-        'Live Server — refreshes browser automatically on save',
-        'HTML CSS Support — better autocomplete',
-        'GitHub Copilot — AI code suggestions (optional)',
+        'Elements Tab: See full HTML structure. Click any element to inspect. Edit HTML live.',
+        'Styles Panel (inside Elements): See all CSS applied. Toggle properties on/off. See overridden styles (strikethrough).',
+        'Console Tab: See JavaScript errors (red text). Copy error message to paste into Claude.',
+        'Network Tab: See if files are loading. Red rows = failed to load (check file path).',
+        'Device Toolbar: Toggle mobile view. Test at specific screen sizes.',
       ]),
-    ], 'Show VS Code open with a project. The visual difference from Notepad is immediately obvious.', 20),
+    ], 'Open DevTools on a real site and walk through each panel. Show a real error in the Console. Students should feel comfortable with DevTools before the final sprint.', 20),
 
-    makeBlock(sid, 2, 'demo', 'VS Code Setup Walkthrough', [
-      h('Live Demo: Install and Configure VS Code'),
+    makeBlock(sid, 2, 'concept', 'The Debugging Process + Common Fixes', [
+      h('The 4-Step Debugging Process'),
       numbered([
-        'Download VS Code from code.visualstudio.com',
-        'Install with default settings',
-        'Open VS Code',
-        'Click Extensions icon (left sidebar) or press Ctrl+Shift+X',
-        'Search and install: Prettier, Live Server',
-        'Open your CodeShala folder: File > Open Folder',
-        'Open bio.html',
-        'Right-click in the editor > Open with Live Server',
-        'Edit the h1 text and save — watch the browser update automatically',
+        'Reproduce the problem: "Does this always happen, or only sometimes? What exact steps cause it?"',
+        'Identify where: Visual problem → Elements/Styles tab. JS not working → Console tab. File not loading → Network tab.',
+        'Read the error: Console errors tell you exactly what went wrong and which line.',
+        'Fix with Claude: "I\'m getting this error: [paste exact error]. Here\'s the relevant code: [paste code]. The error happens when: [describe]. Help me fix this."',
       ]),
-      callout('Live Server is a game changer. No more manual refreshing.', 'tip'),
-    ], 'Go slowly through the install. Wait for everyone to catch up at each step. Live Server demo always gets a reaction.', 25),
+      divider(),
+      h('Common Fixes Reference'),
+      bullets([
+        'Image not showing → Wrong file path. Check path matches exactly — case sensitive!',
+        'CSS not applying → Wrong selector or typo. Inspect element, check which CSS is applied.',
+        'Button click does nothing → JS file not linked or JS error. Check Console.',
+        'Mobile layout broken → Missing viewport meta tag. Add <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+      ]),
+    ], 'Walk through a real debugging session live. Introduce a deliberate error, then find and fix it using DevTools. Students learn by watching the process.', 20),
 
-    makeBlock(sid, 3, 'activity', 'Set Up Your Dev Environment', [
-      h('Activity: Full VS Code Setup'),
-      p('Complete your VS Code setup and migrate your bio page project.'),
+    makeBlock(sid, 3, 'activity', 'Full Debug & Code Review Session', [
+      h('Hands-on Task: Clean, Error-Free Project Ready for Final Sprint'),
       numbered([
-        'Install VS Code if not done already',
-        'Install Prettier and Live Server extensions',
-        'Open your CodeShala folder in VS Code',
-        'Open bio.html with Live Server',
-        'Make 3 changes to your bio page and watch them update live',
-        'Use Prettier to format your code (right-click > Format Document)',
+        'Console check (15 mins): Open your site, open DevTools Console. Fix every red error.',
+        'Link & button audit (10 mins): Click every link and button. Document anything that doesn\'t work.',
+        'Form test (15 mins): Test all form validation paths. Fix any that behave unexpectedly.',
+        'Responsiveness final check (15 mins): DevTools device toolbar — check 320px, 375px, 768px, 1024px.',
+        'Claude code review (20 mins): Paste each major file to Claude for a review. Apply its suggestions.',
+        'Performance check (10 mins): Run Lighthouse in DevTools (Lighthouse tab). Note your score.',
+        'Clean up (10 mins): Remove commented-out code, console.log() statements, and unused files.',
+        'Commit: "Debug: fix errors, code review, performance improvements"',
       ]),
-      callout('If you get stuck on any step, ask your neighbour or raise your hand.', 'info'),
-    ], 'This is a setup session. Expect varied progress. Pair faster students with slower ones. The goal is everyone has Live Server working by end.', 20,
-    { activity_data: activity('Set Up Your Dev Environment', 'Install VS Code, add extensions, open your project, and use Live Server.', 20, 'Pair students. Common issues: admin permissions, wrong folder opened, Live Server port conflicts.', 'Every student has VS Code open with their bio project running on Live Server.') }),
+    ], 'Walk around and check each student\'s Console. Zero red errors is the goal before Week 3. Help fix any persistent issues.', 60,
+    { activity_data: activity('Full Debug & Code Review Session', 'Fix all Console errors, audit links and buttons, test forms, check responsiveness, Claude code review, clean up.', 60, 'Check each student\'s Console. Zero red errors before Week 3. Help with persistent issues.', 'Zero red errors in Console, all links and buttons work, form validation tested, Lighthouse score noted, code reviewed and cleaned up, committed to Github.') }),
 
-    makeBlock(sid, 4, 'quiz', 'VS Code Quiz', [], 'Check VS Code understanding.', 5,
-    { quiz_data: mcq('What does the Live Server extension do?', [
-      { text: 'Uploads your website to the internet automatically' },
-      { text: 'Automatically refreshes your browser when you save a file', correct: true },
-      { text: 'Checks your code for security vulnerabilities' },
-      { text: 'Connects your VS Code to GitHub' },
-    ], 'Live Server creates a local development server and watches your files. When you save, it automatically refreshes the browser. This eliminates the manual refresh cycle and speeds up development significantly.') }),
+    makeBlock(sid, 4, 'quiz', 'Day 10 Knowledge Check', [], 'Debugging check.', 5,
+    { quiz_data: mcq('Where do you find JavaScript errors in DevTools?', [
+      { text: 'Elements tab' },
+      { text: 'Console tab', correct: true },
+      { text: 'Network tab' },
+      { text: 'Sources tab' },
+    ], 'The Console tab shows JavaScript errors in red. Always check the Console first when something isn\'t working. Copy the exact error message and paste it to Claude for the fastest fix.') }),
 
-    makeBlock(sid, 5, 'faq', 'VS Code FAQs', [], 'Common VS Code setup questions.', 5,
+    makeBlock(sid, 5, 'faq', 'Day 10 FAQs', [], 'Common debugging questions.', 5,
     { faq_items: faqs([
-      { q: 'VS Code says I need admin permission to install. What do I do?', a: 'Download the "User Installer" version from the VS Code website instead of the System Installer. The User Installer does not require admin rights.' },
-      { q: 'Live Server is not working. What should I check?', a: 'Make sure you opened a folder (not just a file) in VS Code. Right-click the HTML file in the Explorer panel and select "Open with Live Server". Check that port 5500 is not blocked by a firewall.' },
-      { q: 'Should I use VS Code or an online editor like CodePen?', a: 'VS Code for real projects. CodePen is great for quick experiments and sharing snippets. We use VS Code because it mirrors professional development workflow.' },
+      { q: 'What if I can\'t find the error?', a: 'Paste your entire file to Claude and say "Find all errors and issues in this code." It will audit the full file.' },
+      { q: 'My DevTools shows hundreds of things. Where do I start?', a: 'Always start with the Console. Red error messages are your top priority. Address them first, then warnings.' },
+      { q: 'How do I copy an error from the Console?', a: 'Right-click the error → "Copy message" or just select and copy the text. Then paste it directly into Claude.' },
+      { q: 'Should I fix every warning (yellow) in the Console?', a: 'Fix errors (red) first. Warnings (yellow) are lower priority but good to address before launch.' },
+      { q: 'How do I know if my site is fast enough?', a: 'In Chrome DevTools → Lighthouse tab → Generate Report. Aim for 80+ on performance and accessibility.' },
     ]) }),
 
-    makeBlock(sid, 6, 'wrapup', 'Day 10 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['VS Code installation and configuration', 'Essential extensions: Prettier, Live Server', 'Opening a project folder', 'Live development workflow']),
+    makeBlock(sid, 6, 'wrapup', 'Day 10 Wrap-Up — Week 2 Complete!', [
+      h('Week 2 Complete — Guided Development Done'),
+      bullets(['Day 6: Navigation + Hero Section', 'Day 7: Forms & User Input', 'Day 8: Content Sections', 'Day 9: Styling & Polish', 'Day 10: Error Handling & Debugging']),
       divider(),
-      h('Homework'),
-      p('Spend 20 minutes in VS Code. Open your bio page, make improvements, and get comfortable with the editor.'),
-      callout('Tomorrow: Spec Writing — how to plan a project before building it. This is how professionals work.', 'info'),
-    ], 'Students now have a professional development environment. This is a significant milestone.', 10),
+      h('Week 3 Preview — Final Project'),
+      bullets(['Day 11: Sprint planning + project structure', 'Day 12: Core development sprint', 'Day 13: Testing, accessibility & polish', 'Day 14: Vercel deployment & launch']),
+      callout('Week 3 is where it all comes together. Come ready to build your complete, cohesive project.', 'tip'),
+    ], 'Celebrate Week 2 completion. Students have all the skills they need. Week 3 is execution. Build confidence before the final sprint.', 10),
   ]
 }
 
-function day11Blocks(): Block[] {
+// ─── DAY 11: Final Project Planning & Sprint Setup ────────────────────────────
+function day11(): Block[] {
   const sid = S[10]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 11 — Spec Writing: Plan Before You Build', [
-      h('Day 11 — Spec Writing: Plan Before You Build'),
-      p('A spec (specification) is a written plan for what you are building. Today you learn to write one.'),
-      bullets(['What a spec is and why it matters', 'Requirements vs design vs tasks', 'Writing a spec with Claude', 'Your portfolio spec']),
-      callout('Developers who write specs ship faster and with fewer bugs. It forces you to think before you type.', 'tip'),
-    ], 'This connects directly to the wireframing from Day 4. Students are now planning digitally.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 11 — Final Project Planning & Sprint Setup', [
+      h('Day 11 — Final Project Planning & Sprint Setup'),
+      p('By the end of Week 2, you have: a working navigation and hero section, a functional validated form, a content section, consistent styling, and clean reviewed code on Github.'),
+      p('Now you build the complete, cohesive project — connecting all components and completing your Must Have features.'),
+      bullets(['Progress audit: what\'s built vs what remains', 'Build a realistic 4-day sprint plan', 'Finalise site structure and content', 'Set up for efficient building']),
+      callout('A polished site with 3 working features beats an unfinished site with 8 broken ones. Be honest about your progress.', 'warning'),
+    ], 'Ask students to open their requirements document from Day 4. This is the moment of truth — how much is done?', 10),
 
-    makeBlock(sid, 1, 'concept', 'The 3 Parts of a Spec', [
-      h('Requirements — What it must do'),
-      p('List every feature the project needs. Be specific.'),
-      code('- User can see my name and photo\n- User can read my bio\n- User can see my 3 projects\n- User can click a button to contact me\n- Page works on mobile', 'text'),
+    makeBlock(sid, 1, 'concept', 'Progress Audit + Sprint Planning', [
+      h('Progress Audit'),
+      p('For each Must Have feature, mark its status:'),
+      bullets(['✅ Complete — Built and working', '🔄 Partial — Started but needs work', '❌ Not Started — Needs to be built']),
+      callout('Be honest. Overestimating progress leads to a rushed launch.', 'warning'),
       divider(),
-      h('Design — How it will look'),
-      p('Describe the layout, colors, fonts. Reference your wireframe.'),
-      divider(),
-      h('Tasks — What to build and in what order'),
-      code('1. Create HTML structure\n2. Add CSS styling\n3. Add project cards\n4. Make it responsive\n5. Deploy to Cloudflare', 'text'),
-      callout('A spec is a living document. Update it as you build and learn more.', 'info'),
-    ], 'Show a real spec document. Even a simple one makes the concept concrete.', 20),
+      h('4-Day Sprint Plan Template'),
+      code('DAY 12 — CORE DEVELOPMENT SPRINT\nFocus: Build all remaining Must Have features\nTasks:\n  - [ ] Feature: [name] — Est. time: [X] hrs\n  - [ ] Connect components (navigation links, page flow)\n\nDAY 13 — TESTING, ACCESSIBILITY & POLISH\nFocus: Quality, not new features\nTasks:\n  - [ ] Full user journey test\n  - [ ] Accessibility audit\n  - [ ] Mobile polish\n  - [ ] Content review\n\nDAY 14 — DEPLOYMENT & LAUNCH\nFocus: Making it live\nTasks:\n  - [ ] Final commit\n  - [ ] Deploy to Vercel\n  - [ ] Test live URL\n  - [ ] Share with others', 'text'),
+    ], 'Walk through the sprint planning template with the class. Help students be realistic about time estimates. 1 feature = 1-2 hours is a good rule of thumb.', 20),
 
-    makeBlock(sid, 2, 'demo', 'Write a Spec with Claude', [
-      h('Live Demo: Portfolio Spec with Claude'),
-      numbered([
-        'Open Claude.ai',
-        'Prompt: "You are a software architect. Help me write a spec for a personal portfolio website. I am a beginner. The site should have: home, about, projects, contact sections. Format it with Requirements, Design, and Tasks sections."',
-        'Review the output together',
-        'Refine: "Add a requirement that it must work on mobile phones"',
-        'Refine: "Break the Tasks into smaller sub-tasks"',
-        'Save the spec as spec.md in your CodeShala folder',
-      ]),
-      callout('Notice how Claude helps you think of requirements you might have missed.', 'tip'),
-    ], 'This demo shows Claude as a thinking partner, not just a code generator. Important mindset shift.', 20),
-
-    makeBlock(sid, 3, 'activity', 'Write Your Portfolio Spec', [
-      h('Activity: Write Your Portfolio Spec'),
-      p('Use Claude to write a complete spec for your portfolio website.'),
+    makeBlock(sid, 2, 'concept', 'Scoping + Multi-Page vs Single-Page', [
+      h('Scoping Your Final Days Honestly'),
       bullets([
-        'Requirements: at least 8 specific requirements',
-        'Design: colors, fonts, layout description',
-        'Tasks: ordered list of what to build',
-        'Save as portfolio-spec.md in your CodeShala folder',
+        'If you\'re behind: Focus only on Must Haves. A simple, complete, working project is better than a complex, broken one.',
+        'If you\'re ahead: Pick 1-2 Should Have features to add. Don\'t over-scope.',
+        'What to cut if time is short: Complex animations, extra pages, optional features.',
       ]),
-      callout('This spec is your blueprint for Week 3. The more detailed it is, the easier building will be.', 'tip'),
-    ], 'Students who struggle with this are usually being too vague. Push them to be specific. "It should look good" is not a requirement.', 20,
-    { activity_data: activity('Write Your Portfolio Spec', 'Write a complete spec for your portfolio with requirements, design, and tasks sections.', 20, 'Push for specificity. Vague requirements lead to vague results. Review 2-3 specs with the class.', 'Every student has a saved portfolio-spec.md with at least 8 requirements, design notes, and ordered tasks.') }),
+      divider(),
+      h('Single-Page vs Multi-Page'),
+      bullets([
+        'Single Page (Recommended): Everything on one index.html. Sections scroll into view. Simpler to build and deploy.',
+        'Multi-Page: Separate HTML files (index.html, about.html, contact.html). Better for content-heavy sites.',
+      ]),
+      callout('For most projects in this course, a great single-page site beats multiple mediocre pages.', 'tip'),
+    ], 'Help students make the single vs multi-page decision based on their project. Most should choose single-page.', 15),
 
-    makeBlock(sid, 4, 'quiz', 'Spec Writing Quiz', [], 'Check spec understanding.', 5,
-    { quiz_data: mcq('Which of these is a good requirement for a portfolio website?', [
-      { text: 'It should look professional' },
-      { text: 'It should be nice' },
-      { text: 'The Projects section must display at least 3 project cards, each with a title, description, and link', correct: true },
-      { text: 'It should have good design' },
-    ], 'Good requirements are specific and measurable. "The Projects section must display at least 3 project cards, each with a title, description, and link" tells you exactly what to build and how to know when it is done.') }),
+    makeBlock(sid, 3, 'activity', 'Sprint Plan + Site Structure Setup', [
+      h('Hands-on Task: Complete Sprint Plan + Structure Committed'),
+      numbered([
+        'Progress audit (20 mins): Review each Must Have feature — Complete, Partial, or Not Started',
+        'Gap analysis (10 mins): List exactly what needs to be built',
+        'Time estimate (15 mins): For each remaining task, estimate hours needed. Be realistic.',
+        'Build your 4-day sprint plan using the template above',
+        'Content audit (20 mins): Review and finalise all text content with Claude\'s help. Prompt: "Review this website copy for clarity and professionalism: [paste all text]"',
+        'Project structure cleanup (20 mins): Organise all files, remove test/junk files, ensure CSS variables are consistent, check all file links in index.html',
+        'Commit: "Day 11: Sprint plan ready, project structure finalised"',
+      ]),
+    ], 'Circulate and review each student\'s sprint plan. Push back on unrealistic estimates. Help students scope down if needed.', 60,
+    { activity_data: activity('Sprint Plan + Site Structure Setup', 'Complete progress audit, write 4-day sprint plan, finalise content, clean up project structure.', 60, 'Review each sprint plan. Push back on unrealistic estimates. Help scope down if needed.', 'Progress audit complete, sprint plan written with tasks and time estimates, content finalised, file structure clean, committed to Github.') }),
 
-    makeBlock(sid, 5, 'faq', 'Spec Writing FAQs', [], 'Common spec questions.', 5,
+    makeBlock(sid, 4, 'quiz', 'Day 11 Knowledge Check', [], 'Sprint planning check.', 5,
+    { quiz_data: mcq('What is the most important quality for a final project?', [
+      { text: 'Number of features' },
+      { text: 'Complex animations' },
+      { text: 'Being complete, functional, and working correctly', correct: true },
+      { text: 'Number of pages' },
+    ], 'A complete, working project with 3 features is always better than an incomplete project with 8 broken features. Quality over quantity. This is true in professional development too.') }),
+
+    makeBlock(sid, 5, 'faq', 'Day 11 FAQs', [], 'Common sprint planning questions.', 5,
     { faq_items: faqs([
-      { q: 'Do real developers write specs?', a: 'Yes, always — though they may call them PRDs (Product Requirements Documents), user stories, or tickets. The format varies but the principle is the same: write down what you are building before you build it.' },
-      { q: 'What is a .md file?', a: 'A Markdown file. Markdown is a simple formatting language where # means heading, - means bullet point, and **text** means bold. GitHub renders .md files beautifully. We will use it for your README on Day 18.' },
-      { q: 'How detailed should a spec be?', a: 'Detailed enough that someone else could build it from your spec without asking you questions. If you have to explain something verbally, it should be in the spec.' },
+      { q: 'What if I\'m significantly behind?', a: 'That\'s okay! Simplify your project scope. Tell Claude: "I have 3 days left. Here\'s what I\'ve built and what I planned. What can I realistically finish?" It will give you an honest scope.' },
+      { q: 'Can I change my project idea at this stage?', a: 'No — you don\'t have enough time. Polish and complete what you have. Simplify rather than change direction.' },
+      { q: 'Do I need all the features from my requirements?', a: 'Only Must Haves. A polished site with 3 working features beats an unfinished site with 8 broken ones.' },
+      { q: 'What if my site is mostly done?', a: 'Excellent! Use the extra time on Day 13 to nail the details — accessibility, performance, copy, and mobile experience. These make a huge difference.' },
+      { q: 'Should I add a backend or database?', a: 'No. localStorage is sufficient for this course. A backend is a separate skillset and would delay your deployment.' },
     ]) }),
 
     makeBlock(sid, 6, 'wrapup', 'Day 11 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['Spec writing: Requirements, Design, Tasks', 'Using Claude as a thinking partner', 'Your portfolio spec is written']),
+      bullets(['Progress audit — honest assessment of what\'s done', 'Sprint planning for Days 12-14', 'Scoping decisions — what to build vs cut', 'Project structure cleanup']),
       divider(),
-      h('Homework'),
-      p('Review your spec tonight. Add anything you missed. Think about what your 3 portfolio projects will be.'),
-      callout('Tomorrow: GitHub — your code\'s home on the internet.', 'info'),
-    ], 'Students now have a plan. The rest of the course is executing that plan.', 10),
+      h('Tonight'),
+      p('Review your sprint plan. Is it realistic? Can you actually build everything in Day 12? If not, cut something now rather than on Day 13.'),
+      callout('Tomorrow: Core Development Sprint. Come ready to build. No distractions.', 'tip'),
+    ], 'Students now have a clear plan for the final 3 days. The anxiety of "what do I build?" is replaced by a concrete task list.', 10),
   ]
 }
 
-function day12Blocks(): Block[] {
+// ─── DAY 12: Core Development Sprint ─────────────────────────────────────────
+function day12(): Block[] {
   const sid = S[11]
   return [
-    makeBlock(sid, 0, 'intro', 'Day 12 — GitHub: Your First Repository', [
-      h('Day 12 — GitHub: Your First Repository'),
-      p('GitHub is where developers store, share, and collaborate on code. Today you create your developer identity online.'),
-      bullets(['What Git and GitHub are', 'Create a GitHub account', 'Create your first repository', 'Upload your bio page']),
-      callout('Your GitHub profile is your developer portfolio. Employers look at it. Start building it today.', 'tip'),
-    ], 'Many students have heard of GitHub but never used it. Demystify it early: it is just a website that stores your code.', 10),
+    makeBlock(sid, 0, 'intro', 'Day 12 — Core Development Sprint', [
+      h('Day 12 — Core Development Sprint'),
+      p('Today is a full build day. Work from your sprint plan. No new ideas. No distractions. Just build.'),
+      bullets(['Sprint execution rules', 'Connecting all components', 'Tackling remaining features', 'Debugging checklist after each feature']),
+      callout('Rule: If stuck for more than 15 minutes, paste the problem to Claude. Don\'t sit on it.', 'warning'),
+    ], 'Set the tone: this is a focused work session. Play background music. Walk around constantly. Keep energy high.', 10),
 
-    makeBlock(sid, 1, 'concept', 'Git vs GitHub', [
-      h('Git — Version Control'),
-      p('Git is a tool that tracks changes to your files over time. It is like a save history for your entire project.'),
-      bullets([
-        'Every save is called a "commit"',
-        'You can go back to any previous commit',
-        'Multiple people can work on the same project',
-        'Git runs on your computer',
+    makeBlock(sid, 1, 'concept', 'Sprint Rules + Connecting Components', [
+      h('Sprint Execution Rules'),
+      numbered([
+        'Work from your sprint plan — don\'t get distracted by new ideas',
+        'Commit after every completed feature — never lose progress',
+        'If stuck for more than 15 minutes, paste the problem to Claude',
+        'Mark tasks complete as you finish them',
+        'No perfecting yet — get it working, polish on Day 13',
       ]),
       divider(),
-      h('GitHub — Cloud Storage for Code'),
-      p('GitHub is a website that stores your Git repositories online.'),
+      h('Connecting Components — Navigation to Sections'),
+      code('<!-- Navigation link -->\n<a href="#features">Features</a>\n\n<!-- Target section -->\n<section id="features">...</section>', 'html'),
+      code('/* In CSS */\nhtml {\n  scroll-behavior: smooth;\n}', 'css'),
+      callout('Prompt: "My navigation links don\'t scroll to my page sections. Here\'s my nav HTML: [paste]. Here are my section IDs: [list IDs]. How do I connect them?"', 'tip'),
+    ], 'Show the anchor link + scroll-behavior pattern live. This is the most common "connecting" task students need.', 15),
+
+    makeBlock(sid, 2, 'concept', 'Common Remaining Features + Prompts', [
+      h('Prompts for Common Remaining Features'),
       bullets([
-        'Free for public and private repositories',
-        'Share your code with anyone',
-        'Collaborate with other developers',
-        'Deploy websites directly from GitHub',
+        'About/Team section: "Create an about section for [project name] with a brief description, key values (3 cards with icons), and a team member card. Match my existing CSS variables: [paste variables]."',
+        'Testimonials: "Create a testimonials section with 3 quote cards. Each has: quote text, name, and role. Style with large quotation marks. Responsive — 3 across desktop, 1 on mobile."',
+        'Stats/Numbers: "Create a statistics section with 4 numbers: [stat 1], [stat 2], [stat 3], [stat 4]. Add a count-up animation that triggers when the section scrolls into view."',
+        'Modal/Popup: "Add a modal popup that opens when [button name] is clicked. It contains [content]. Close by clicking X or clicking outside. Include smooth open/close animation."',
       ]),
-      callout('Git is the tool. GitHub is the service. Like how email is the concept and Gmail is the service.', 'info'),
-    ], 'The Git vs GitHub distinction confuses many beginners. The analogy to email/Gmail usually helps.', 20),
+      divider(),
+      h('Debugging Checklist After Each Feature'),
+      bullets(['Does it display correctly on desktop?', 'Does it display correctly on mobile?', 'Does the JavaScript work without errors? (Check Console)', 'Is it linked/connected to the rest of the site?', 'Did I commit?']),
+    ], 'These prompts are ready to use. Students should copy and customise them for their specific project.', 15),
 
-    makeBlock(sid, 2, 'demo', 'Create Your First Repository', [
-      h('Live Demo: GitHub Setup and First Repo'),
+    makeBlock(sid, 3, 'activity', 'Full Sprint Day', [
+      h('Hands-on Task: All Must Have Features Complete'),
+      p('Work through your sprint plan tasks from Day 11 in order. For each task:'),
       numbered([
-        'Go to github.com and create a free account',
-        'Use a professional username — this is your developer identity',
-        'Click the + icon > New repository',
-        'Name it "portfolio" — keep it lowercase',
-        'Check "Add a README file"',
-        'Click Create repository',
-        'Click "Add file" > "Upload files"',
-        'Drag your bio.html and style.css files',
-        'Click "Commit changes"',
-        'View your files on GitHub',
+        'Review the feature spec from your requirements document',
+        'Prompt Claude with full context (existing HTML, CSS variables, feature spec)',
+        'Implement and test immediately',
+        'Fix any issues (Console + DevTools)',
+        'Test on mobile (DevTools device toolbar)',
+        'Commit with descriptive message',
       ]),
-      callout('Your code is now on the internet. Anyone with the link can see it.', 'tip'),
-    ], 'Go slowly through account creation. Username choice matters — encourage professional names.', 25),
+      divider(),
+      h('End of Day Check'),
+      bullets(['All Must Have features implemented', 'All navigation links work', 'CTA buttons connect to correct sections/actions', 'No Console errors', 'All code committed to Github']),
+    ], 'This is a full build session. Walk around constantly. Help unblock students quickly. Keep the energy high. Celebrate each completed feature.', 90,
+    { activity_data: activity('Full Sprint Day', 'Build all remaining Must Have features, connect all components, commit after each feature.', 90, 'Walk constantly. Unblock students quickly. Celebrate each completed feature. Ensure everyone commits before leaving.', 'All Must Have features implemented, site functions as a cohesive whole, all internal links work, zero Console errors, all code committed to Github.') }),
 
-    makeBlock(sid, 3, 'activity', 'Upload Your Project to GitHub', [
-      h('Activity: Create Your GitHub Profile and First Repo'),
-      numbered([
-        'Create your GitHub account with a professional username',
-        'Create a repository called "portfolio"',
-        'Upload your bio.html and style.css files',
-        'Add a commit message: "Initial portfolio upload"',
-        'Share your GitHub profile link with the trainer',
-      ]),
-      callout('Your GitHub username will appear on your portfolio and CV. Choose wisely.', 'warning'),
-    ], 'Help students choose good usernames. Avoid numbers, underscores, or anything unprofessional. This is their developer identity.', 20,
-    { activity_data: activity('Upload Your Project to GitHub', 'Create a GitHub account, create a portfolio repository, and upload your bio page files.', 20, 'Check usernames before they commit. Help with file upload issues. Collect GitHub profile links.', 'Every student has a GitHub account with a portfolio repository containing their bio page.') }),
+    makeBlock(sid, 4, 'quiz', 'Day 12 Knowledge Check', [], 'Sprint execution check.', 5,
+    { quiz_data: mcq('Why commit after every completed feature?', [
+      { text: 'It is not necessary' },
+      { text: 'To create save points so no work is lost if something breaks', correct: true },
+      { text: 'Github requires it' },
+      { text: 'To tell Vercel to deploy' },
+    ], 'Committing frequently creates save points. If you break something, you can always go back to the last working commit. This is the safety net that lets you experiment confidently.') }),
 
-    makeBlock(sid, 4, 'quiz', 'GitHub Quiz', [], 'Check GitHub understanding.', 5,
-    { quiz_data: trueFalse('Git and GitHub are the same thing.', false, 'False. Git is a version control tool that runs on your computer. GitHub is a cloud service that hosts Git repositories online. You can use Git without GitHub, but GitHub requires Git.') }),
-
-    makeBlock(sid, 5, 'faq', 'GitHub FAQs', [], 'Common GitHub questions.', 5,
+    makeBlock(sid, 5, 'faq', 'Day 12 FAQs', [], 'Common sprint day questions.', 5,
     { faq_items: faqs([
-      { q: 'Is GitHub free?', a: 'Yes. GitHub is free for unlimited public and private repositories. The paid plans add team features and advanced CI/CD tools, which you do not need for this course.' },
-      { q: 'What is a commit message?', a: 'A short description of what you changed. Good commit messages: "Add contact section", "Fix navigation styling", "Update project descriptions". Bad: "changes", "update", "fix".' },
-      { q: 'Can I delete a repository?', a: 'Yes, from the repository Settings page. But be careful — deleting a repository deletes all its history. You cannot undo this.' },
+      { q: 'What if a feature is taking much longer than estimated?', a: 'Timebox it — give it one more focused hour. If still stuck, simplify or cut it. Prompt Claude: "Give me a simpler version of [feature] that achieves the same goal."' },
+      { q: 'My localStorage data doesn\'t persist between page refreshes. Is that normal?', a: 'localStorage DOES persist across refreshes. If data disappears, check that you\'re saving before navigating away. Prompt Claude to debug your save/load functions.' },
+      { q: 'My site has multiple pages. How do I share a navigation across all of them?', a: 'Copy the navigation HTML into each page\'s header section. Update the active link class for each page. Ask Claude for a JS template injection snippet for automation.' },
+      { q: 'I finished all my features ahead of schedule. What should I work on?', a: 'Add your top Should Have feature from your requirements doc. Or spend the time on a thorough mobile polish pass.' },
+      { q: 'Can I use a CDN library for a complex feature?', a: 'Yes! Libraries from cdnjs.cloudflare.com are safe to use. Ask Claude: "I want to add [feature]. Is there a lightweight library I can include via CDN?"' },
     ]) }),
 
     makeBlock(sid, 6, 'wrapup', 'Day 12 Wrap-Up', [
       h('What We Covered Today'),
-      bullets(['Git vs GitHub — the difference', 'Creating a GitHub account and repository', 'Uploading files to GitHub', 'Your developer identity is online']),
-      divider(),
-      h('Homework'),
-      p('Explore GitHub tonight. Look at 3 other developers\' profiles. Notice how they organise their repositories.'),
-      callout('Tomorrow: We start building your real portfolio — Hero and About sections.', 'info'),
-    ], 'Students now have a GitHub profile. This is a major milestone. Share the links in the group chat.', 10),
-  ]
-}
-
-function day13Blocks(): Block[] {
-  const sid = S[12]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 13 — Build Portfolio: Hero + About Sections', [
-      h('Day 13 — Build Portfolio: Hero + About Sections'),
-      p('Week 3 starts now. You are building your real portfolio — the one you will show to the world.'),
-      bullets(['Set up the portfolio project structure', 'Build the Hero section', 'Build the About section', 'Push to GitHub']),
-      callout('Reference your wireframe from Day 4 and your spec from Day 11. You planned this. Now you build it.', 'tip'),
-    ], 'Students should have their wireframe and spec ready. Reference them throughout the session.', 10),
-
-    makeBlock(sid, 1, 'concept', 'Portfolio Structure', [
-      h('Professional Portfolio Structure'),
-      code('portfolio/\n  index.html\n  style.css\n  assets/\n    profile-photo.jpg\n  README.md', 'text'),
-      divider(),
-      h('Hero Section Anatomy'),
-      bullets([
-        'Full-width section at the top of the page',
-        'Your name as the main heading (h1)',
-        'Your title/role as a subheading',
-        'A short tagline (1-2 sentences)',
-        'A call-to-action button (View Projects or Contact Me)',
-        'Optional: your photo',
-      ]),
-      divider(),
-      h('About Section Anatomy'),
-      bullets([
-        'Your photo (or avatar)',
-        'A 2-3 paragraph bio',
-        'Your background and what you are learning',
-        'What you are looking for (internship, freelance, etc.)',
-      ]),
-    ], 'Show a real portfolio example on the projector. Point out the hero and about sections.', 15),
-
-    makeBlock(sid, 2, 'demo', 'Build Hero Section Live', [
-      h('Live Demo: Hero Section with Claude'),
-      numbered([
-        'Create a new folder: portfolio/',
-        'Create index.html and style.css',
-        'Prompt Claude: "Write HTML and CSS for a portfolio hero section. Name: [your name]. Title: No-Code Developer. Tagline: Building the web without barriers. Button: View My Work. Dark background #0f0f0f, white text, purple accent #6c63ff."',
-        'Paste the HTML into index.html',
-        'Paste the CSS into style.css',
-        'Open with Live Server',
-        'Adjust anything that does not look right using follow-up prompts',
-      ]),
-      callout('Use your own name and details. This is YOUR portfolio.', 'tip'),
-    ], 'Students follow along building their own version. Encourage personalisation — different colors, different taglines.', 25),
-
-    makeBlock(sid, 3, 'activity', 'Build Hero + About', [
-      h('Activity: Build Your Hero and About Sections'),
-      p('Using Claude and your spec, build both sections of your portfolio.'),
-      bullets([
-        'Hero: your name, title, tagline, and a button',
-        'About: your photo (or placeholder), bio paragraphs',
-        'Both sections styled and looking good',
-        'Commit and push to GitHub when done',
-      ]),
-      callout('Prompt tip: "Here is my current HTML: [paste]. Add an About section below the hero with a photo placeholder and 2 paragraphs."', 'tip'),
-    ], 'This is a long build session. Walk around constantly. Students will have very different results — that is good.', 30,
-    { activity_data: activity('Build Hero + About Sections', 'Build and style the Hero and About sections of your portfolio using Claude.', 30, 'Walk the room. Help with CSS issues. Encourage personalisation. Push everyone to commit to GitHub.', 'Every student has a portfolio with a styled Hero and About section pushed to GitHub.') }),
-
-    makeBlock(sid, 4, 'quiz', 'Portfolio Structure Quiz', [], 'Quick check.', 5,
-    { quiz_data: mcq('What is the purpose of the Hero section in a portfolio?', [
-      { text: 'To list all your projects in detail' },
-      { text: 'To show your contact information' },
-      { text: 'To immediately communicate who you are and what you do, and prompt a call to action', correct: true },
-      { text: 'To display your educational background' },
-    ], 'The Hero section is the first thing visitors see. Its job is to answer "who are you?" and "what do you want me to do?" in under 5 seconds. Name, title, tagline, and a clear call-to-action button.') }),
-
-    makeBlock(sid, 5, 'faq', 'Portfolio Building FAQs', [], 'Common portfolio questions.', 5,
-    { faq_items: faqs([
-      { q: 'What should I write in my bio if I have no experience?', a: 'Write about what you are learning, why you are learning it, and what you want to build. Honesty about being a beginner is fine. Enthusiasm and direction are more important than experience at this stage.' },
-      { q: 'Should I use a real photo?', a: 'Yes, if you are comfortable. A real photo builds trust and makes your portfolio more personal. If not, a professional avatar or illustration works too.' },
-      { q: 'My portfolio looks different from the demo. Is that okay?', a: 'Yes! Your portfolio should look like YOU, not like the trainer\'s demo. Different colors, layouts, and content are encouraged. The goal is a portfolio you are proud of.' },
-    ]) }),
-
-    makeBlock(sid, 6, 'wrapup', 'Day 13 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['Portfolio project structure', 'Hero section: name, title, tagline, CTA', 'About section: photo, bio', 'Pushed to GitHub']),
-      divider(),
-      h('Homework'),
-      p('Refine your Hero and About sections tonight. Ask a friend or family member to look at it and give feedback.'),
-      callout('Tomorrow: Mid-Course Checkpoint. Come ready to show what you have built.', 'info'),
-    ], 'Students have a real portfolio started. This is a huge milestone. Celebrate it.', 10),
-  ]
-}
-
-function day14Blocks(): Block[] {
-  const sid = S[13]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 14 — Mid-Course Checkpoint + Show and Tell', [
-      h('Day 14 — Mid-Course Checkpoint + Show and Tell'),
-      p('Halfway through. Today you present what you have built, get feedback, and plan the second half.'),
-      bullets(['Show and Tell: everyone presents their portfolio so far', 'Peer feedback session', 'Review what is working and what is not', 'Plan for Week 3 completion']),
-      callout('Presenting your work is a skill. Practice it today — you will do it for real on Day 21.', 'tip'),
-    ], 'Set up a presentation format. Each student gets 2 minutes to show their portfolio on the projector.', 10),
-
-    makeBlock(sid, 1, 'concept', 'How to Give Good Feedback', [
-      h('The Feedback Framework'),
-      bullets([
-        'Start with what works: "I like how you..."',
-        'Be specific: "The purple color scheme is consistent and professional"',
-        'Suggest, do not criticise: "Have you considered..." instead of "This is wrong"',
-        'Focus on the work, not the person',
-      ]),
-      divider(),
-      h('What to Look For in a Portfolio'),
-      bullets([
-        'Is the name and title immediately visible?',
-        'Is the purpose of the site clear in 5 seconds?',
-        'Does it look good on a phone? (resize the browser)',
-        'Are there any broken elements or missing images?',
-        'Is the text readable (contrast, size)?',
-      ]),
-    ], 'Model good feedback yourself. Students learn how to give feedback by watching you give it.', 15),
-
-    makeBlock(sid, 2, 'demo', 'Mid-Course Progress Review', [
-      h('What You Have Built in 13 Days'),
-      bullets([
-        'Day 1-4: Computer basics, file management, logic thinking, wireframing',
-        'Day 5-6: AI tools, prompt engineering',
-        'Day 7: Week 1 review',
-        'Day 8-9: HTML and CSS fundamentals',
-        'Day 10: VS Code professional setup',
-        'Day 11: Spec writing',
-        'Day 12: GitHub account and first repository',
-        'Day 13: Portfolio Hero and About sections',
-      ]),
-      callout('In 13 days you went from zero to a live portfolio on GitHub. Most people take months to get here.', 'tip'),
-    ], 'This recap builds confidence. Students often underestimate their progress.', 10),
-
-    makeBlock(sid, 3, 'activity', 'Show and Tell', [
-      h('Activity: Present Your Portfolio'),
-      p('Each student presents their portfolio for 2 minutes.'),
-      bullets([
-        'Show your portfolio in the browser',
-        'Explain: what you built, what you are proud of, what you want to improve',
-        'Class gives feedback using the framework above',
-        'Trainer notes 1 specific improvement for each student',
-      ]),
-      callout('Be brave. Everyone is at the same stage. This is a safe space.', 'info'),
-    ], 'Keep presentations to 2 minutes each. Give specific, actionable feedback. Note common issues to address in the next sessions.', 40,
-    { activity_data: activity('Show and Tell', 'Each student presents their portfolio for 2 minutes and receives peer feedback.', 40, 'Keep time strictly. Give specific feedback. Note common issues across portfolios to address in Days 15-17.', 'Every student has presented their work and received specific feedback on what to improve.') }),
-
-    makeBlock(sid, 4, 'quiz', 'Halfway Check', [], 'Reflection quiz.', 5,
-    { quiz_data: mcq('What is the most important thing a portfolio homepage must communicate in the first 5 seconds?', [
-      { text: 'Your full work history and education' },
-      { text: 'Who you are, what you do, and what you want the visitor to do next', correct: true },
-      { text: 'All your technical skills in detail' },
-      { text: 'Your contact information' },
-    ], 'The 5-second rule: a visitor should immediately understand who you are, what you do, and what action to take. Name + title + tagline + CTA button achieves this. Everything else is secondary.') }),
-
-    makeBlock(sid, 5, 'faq', 'Mid-Course FAQs', [], 'Common questions at the halfway point.', 5,
-    { faq_items: faqs([
-      { q: 'My portfolio looks worse than others. Should I be worried?', a: 'No. Everyone learns at a different pace. The goal is YOUR progress, not comparison. Focus on the specific feedback you received today and implement it.' },
-      { q: 'Can I change my portfolio design completely?', a: 'Yes. Day 14 is the perfect time to pivot if you are not happy with your direction. You have 7 days left to build. A fresh start now is better than finishing something you do not like.' },
-      { q: 'What should my 3 portfolio projects be?', a: 'They can be anything you build in this course, personal projects, or even redesigns of existing websites. The key is that each project shows a skill and has a live link.' },
-    ]) }),
-
-    makeBlock(sid, 6, 'wrapup', 'Day 14 Wrap-Up', [
-      h('Halfway There — Keep Going'),
-      p('You have presented your work, received feedback, and know exactly what to improve.'),
-      bullets(['Specific feedback received for your portfolio', 'Week 3 plan: Skills, Projects, Contact, Polish, Deploy']),
-      divider(),
-      h('Action Items'),
-      p('Based on the feedback you received today, write down 3 specific things to improve in your portfolio.'),
-      callout('Tomorrow: Skills + Projects sections. The portfolio starts to look complete.', 'info'),
-    ], 'End on encouragement. The second half is where portfolios really come together.', 10),
-  ]
-}
-
-// ─── DAY 15: Build Portfolio — Skills + Projects Sections ─────────────────────
-function day15Blocks(): Block[] {
-  const sid = S[14]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 15 — Build Portfolio: Skills + Projects Sections', [
-      h('Day 15 — Build Portfolio: Skills + Projects Sections'),
-      p('Today you add the meat of your portfolio — the Skills and Projects sections that show what you can do.'),
-      bullets(['Skills section with visual indicators', 'Projects section with cards', 'Linking to live projects or GitHub repos', 'Styling for visual hierarchy']),
-      callout('Your projects do not need to be complex. They need to be real, working, and well-presented.', 'tip'),
-    ], 'Students should have their feedback from Day 14. Start by addressing common issues observed.', 10),
-
-    makeBlock(sid, 1, 'concept', 'Skills and Projects Design', [
-      h('How to Present Skills'),
-      bullets(['Group by category: Languages, Tools, Soft Skills', 'Use badges or pills for visual interest', 'Be honest — only list skills you can discuss', 'Include skills you are currently learning']),
-      divider(),
-      h('Projects Section Anatomy'),
-      bullets(['Project cards in a grid layout', 'Each card needs: title, description, tech used, live link', 'Start with 3 projects minimum', 'Order by most impressive first']),
-      callout('A well-presented simple project beats a complex project with poor presentation.', 'info'),
-    ], 'Show examples of good skills and projects sections from real portfolios.', 20),
-
-    makeBlock(sid, 2, 'demo', 'Build Skills Section Live', [
-      h('Live Demo: Skills Section with Claude'),
-      numbered(['Prompt Claude: "Add a Skills section to my portfolio HTML. Categories: Web Development (HTML, CSS, VS Code), AI Tools (Claude, Prompt Engineering), Soft Skills (Problem Solving, Communication). Use pill-style badges."', 'Paste the HTML and CSS', 'Adjust colors and layout', 'Use Claude to refine: "Make the skills pills smaller and add hover effects"']),
-      callout('Skills sections are about visual hierarchy. The most important skills should stand out.', 'tip'),
-    ], 'Build this live. Show the iterative refinement process with Claude.', 25),
-
-    makeBlock(sid, 3, 'activity', 'Build Skills + Projects Sections', [
-      h('Activity: Complete Skills and Projects'),
-      p('Add both sections to your portfolio and style them professionally.'),
-      bullets(['Skills section with at least 8-10 skills grouped into categories', 'Projects section with 3 project cards', 'Each project must have: title, description, tech used, and a link', 'Both sections styled to match your portfolio theme', 'Commit and push to GitHub when done']),
-      callout('If you do not have 3 projects yet, use: "Personal Portfolio (This site!)", "Bio Page (From Day 8)", "Coming Soon Project"', 'info'),
-    ], 'This is a substantial build. Students will need the full time. Help with layout issues especially.', 35,
-    { activity_data: activity('Build Skills + Projects Sections', 'Add Skills and Projects sections to your portfolio with styling.', 35, 'Help with grid layouts. Check that links work. Encourage good project descriptions.', 'Every student has Skills and Projects sections added to their portfolio and pushed to GitHub.') }),
-
-    makeBlock(sid, 4, 'quiz', 'Portfolio Content Quiz', [], 'Check understanding of portfolio content.', 5,
-    { quiz_data: mcq('What should you include for each project in your Projects section?', [
-      { text: 'Just the project name' },
-      { text: 'Name, description, technologies used, and a link to view or the code', correct: true },
-      { text: 'Only a screenshot' },
-      { text: 'A detailed technical blog post about how you built it' },
-    ], 'Each project card should give enough information for someone to understand what you built, how you built it, and where they can see it. Minimum: title, description, tech stack, link.') }),
-
-    makeBlock(sid, 5, 'faq', 'Skills and Projects FAQs', [], 'Common questions about portfolio content.', 5,
-    { faq_items: faqs([
-      { q: 'Should I list skills I am still learning?', a: 'Yes. Frame them honestly: "Currently learning: JavaScript". Never claim mastery of something you have only touched once.' },
-      { q: 'What if my projects are too simple?', a: 'Simple projects well-presented are better than nothing. Your bio page from Day 8 is a legitimate project. Your portfolio itself is a project.' },
-      { q: 'Should I include school projects?', a: 'Include anything that demonstrates your skills and that you are allowed to share publicly.' },
-    ]) }),
-
-    makeBlock(sid, 6, 'wrapup', 'Day 15 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['Skills section with categorised skills', 'Projects section with project cards', 'Linking projects to live sites or repos']),
-      divider(),
-      h('Homework'),
-      p('Add screenshots or placeholder images to your project cards.'),
-      callout('Tomorrow: Contact section and mobile responsiveness.', 'info'),
-    ], 'Portfolios are starting to look complete. Celebrate the progress.', 10),
-  ]
-}
-
-// ─── DAY 16 ───────────────────────────────────────────────────────────────────
-function day16Blocks(): Block[] {
-  const sid = S[15]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 16 — Contact Section + Mobile Responsiveness', [
-      h('Day 16 — Contact Section + Mobile Responsiveness'),
-      p('Make your portfolio accessible on every device and give people a way to reach you.'),
-      bullets(['Contact section with links', 'Responsive design basics', 'CSS media queries', 'Testing on mobile']),
-      callout('Over 60% of web traffic is mobile. If your portfolio does not work on phones, you lose more than half your audience.', 'tip'),
-    ], 'Start by showing a non-responsive portfolio on a phone. The difference is stark.', 10),
-    makeBlock(sid, 1, 'concept', 'Contact Section + Responsive Design', [
-      h('What to Include in Contact'),
-      bullets(['Email (professional address)', 'LinkedIn profile link', 'GitHub profile link']),
-      callout('Never put your phone number on a public portfolio unless you want spam calls.', 'warning'),
-      divider(),
-      h('Responsive Design Basics'),
-      p('Responsive design means your site works on screens of all sizes.'),
-      code('@media (max-width: 768px) {\n  .hero h1 { font-size: 32px; }\n  .grid { grid-template-columns: 1fr; }\n}', 'css'),
-    ], 'Explain media queries simply. Most students have never heard of them.', 25),
-    makeBlock(sid, 2, 'demo', 'Make Portfolio Responsive', [
-      h('Live Demo: Add Mobile Responsiveness'),
-      numbered(['Open DevTools and toggle device toolbar (Ctrl+Shift+M)', 'View portfolio on iPhone SE size — notice what breaks', 'Prompt Claude: "Make my portfolio responsive for mobile. Here is my CSS: [paste]. Fix the hero text size and section stacking."', 'Add the media query CSS', 'Test on multiple device sizes']),
-      callout('Responsive design is iterative. Test, find what breaks, fix it, test again.', 'tip'),
-    ], 'Do this live. Students see the immediate impact of responsive CSS.', 25),
-    makeBlock(sid, 3, 'activity', 'Add Contact + Make Responsive', [
-      h('Activity: Contact Section and Mobile Optimization'),
-      bullets(['Add a Contact section with email, GitHub, and LinkedIn links', 'Add media queries to make all sections responsive', 'Test on at least 3 device sizes in DevTools', 'Commit and push to GitHub']),
-    ], 'Walk around with your phone. Test on real devices if possible.', 30,
-    { activity_data: activity('Add Contact + Make Responsive', 'Add Contact section and implement responsive design.', 30, 'Test on real devices. Check that buttons are tappable. Help with media query issues.', 'Every student has a Contact section and a mobile-responsive portfolio.') }),
-    makeBlock(sid, 4, 'quiz', 'Responsive Design Quiz', [], 'Check responsive understanding.', 5,
-    { quiz_data: mcq('What does @media (max-width: 768px) mean?', [
-      { text: 'Apply styles only on screens wider than 768px' },
-      { text: 'Apply styles on screens 768px wide or smaller', correct: true },
-      { text: 'Make all elements exactly 768px wide' },
-      { text: 'Hide elements on small screens' },
-    ], 'max-width: 768px means the styles apply on screens UP TO 768px wide — phones and small tablets.') }),
-    makeBlock(sid, 5, 'faq', 'Responsive Design FAQs', [], 'Common responsive questions.', 5,
-    { faq_items: faqs([
-      { q: 'What is a good breakpoint for mobile?', a: '768px for tablets and below, 480px for phones. Choose breakpoints where YOUR design breaks.' },
-      { q: 'Mobile first or desktop first?', a: 'Professionals often design mobile-first. For learning, start with whichever feels natural.' },
-    ]) }),
-    makeBlock(sid, 6, 'wrapup', 'Day 16 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['Contact section with professional links', 'Media queries for responsive design', 'Testing on multiple device sizes']),
-      divider(),
-      h('Homework'),
-      p('Send your portfolio link to a friend with a phone. Ask them to test it and screenshot any issues.'),
-      callout('Tomorrow: Polish day — fonts, colors, animations.', 'info'),
-    ], 'Mobile responsiveness is a major milestone. Their portfolios now work everywhere.', 10),
-  ]
-}
-
-// ─── DAY 17 ───────────────────────────────────────────────────────────────────
-function day17Blocks(): Block[] {
-  const sid = S[16]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 17 — Polish Day: Fonts, Colors, Animation', [
-      h('Day 17 — Polish Day: Fonts, Colors, Animation'),
-      p('Your portfolio works. Today you make it beautiful. Polish is what separates amateur from professional.'),
-      bullets(['Google Fonts for typography', 'Color palette selection', 'Subtle CSS animations', 'Attention to detail']),
-      callout('Good design is invisible. Great design makes people remember you.', 'tip'),
-    ], 'Show before/after examples of portfolios with and without polish. The difference is dramatic.', 10),
-    makeBlock(sid, 1, 'concept', 'Design Fundamentals for Developers', [
-      h('Typography: Pick 2 Fonts Maximum'),
-      bullets(['One for headings, one for body text', 'Google Fonts is free with thousands of options', 'Safe combos: Sora + DM Sans, Montserrat + Lato, Playfair Display + Source Sans Pro']),
-      divider(),
-      h('Color Palette: 3-4 Colors Total'),
-      bullets(['Background, text, accent, secondary accent', 'Use coolors.co or ask Claude to suggest a palette', 'Ensure good contrast for readability']),
-      divider(),
-      h('Animations: Less is More'),
-      code('.button:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 4px 12px rgba(0,0,0,0.2);\n  transition: all 0.3s ease;\n}', 'css'),
-      callout('Animations should enhance, not distract. Subtle hover effects are all you need.', 'info'),
-    ], 'Show examples of good and bad typography, color choices, and animations.', 25),
-    makeBlock(sid, 2, 'demo', 'Apply Polish Live', [
-      h('Live Demo: Transform with Polish'),
-      numbered(['Go to fonts.google.com and pick 2 fonts', 'Copy the link tags and add to HTML head', 'Update CSS font-family', 'Prompt Claude: "Suggest a color palette for a developer portfolio. Professional, modern, accessible."', 'Apply the suggested colors', 'Add hover animations to buttons and links']),
-      callout('The before/after is striking. Small polish changes create huge visual impact.', 'tip'),
-    ], 'Do this transformation live. Students love seeing the instant upgrade.', 25),
-    makeBlock(sid, 3, 'activity', 'Polish Your Portfolio', [
-      h('Activity: Full Portfolio Polish Pass'),
-      bullets(['Add Google Fonts — choose 2 complementary fonts', 'Implement a cohesive color palette', 'Add hover effects to all interactive elements', 'Check spacing and alignment', 'Get feedback from a peer and refine', 'Commit final polished version to GitHub']),
-      callout('Spend 10 minutes just looking at your portfolio critically. What feels off? Fix it.', 'info'),
-    ], 'This is a creative session. Encourage experimentation. Give design feedback.', 35,
-    { activity_data: activity('Polish Your Portfolio', 'Apply fonts, colors, animations, and attention to detail across your entire portfolio.', 35, 'Give design feedback. Encourage subtlety over flashiness. Help with color contrast issues.', 'Every student has a polished, professional-looking portfolio with custom fonts, cohesive colors, and smooth interactions.') }),
-    makeBlock(sid, 4, 'quiz', 'Design Polish Quiz', [], 'Check design understanding.', 5,
-    { quiz_data: mcq('Why should you limit your portfolio to 2 fonts maximum?', [
-      { text: 'To make the page load faster' },
-      { text: 'To maintain visual consistency and avoid looking cluttered', correct: true },
-      { text: 'Because Google Fonts only allows 2 fonts per page' },
-      { text: 'To save CSS code' },
-    ], 'Too many fonts create visual chaos. 2 fonts gives you variety while maintaining a cohesive, professional look.') }),
-    makeBlock(sid, 5, 'faq', 'Design and Polish FAQs', [], 'Common polish questions.', 5,
-    { faq_items: faqs([
-      { q: 'How do I know if my color palette is good?', a: 'Test for contrast, ask 3 people for feedback, and compare to professional portfolios you admire.' },
-      { q: 'My animations feel too slow. How do I fix them?', a: 'Adjust the transition duration. 0.2s-0.3s feels snappy. 0.5s+ feels sluggish.' },
-    ]) }),
-    makeBlock(sid, 6, 'wrapup', 'Day 17 Wrap-Up', [
-      h('What We Covered Today'),
-      bullets(['Typography with Google Fonts', 'Color palette selection', 'Subtle CSS animations and transitions']),
-      divider(),
-      h('Homework'),
-      p('Show your polished portfolio to someone outside the class. Ask: does this look professional?'),
-      callout('Tomorrow: Final GitHub push and README writing.', 'info'),
-    ], 'Portfolios are now polished and professional. Take screenshots before tomorrow.', 10),
-  ]
-}
-
-// ─── DAY 18 ───────────────────────────────────────────────────────────────────
-function day18Blocks(): Block[] {
-  const sid = S[17]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 18 — Final GitHub Push + README Writing', [
-      h('Day 18 — Final GitHub Push + README Writing'),
-      p('A portfolio without documentation is incomplete. Today you write a professional README.'),
-      bullets(['What makes a good README', 'Markdown formatting', 'Documenting your portfolio', 'Final GitHub push before deployment']),
-      callout('Your README is the first thing people see on GitHub. Make it count.', 'tip'),
-    ], 'Show examples of great READMEs from real GitHub repositories.', 10),
-    makeBlock(sid, 1, 'concept', 'Anatomy of a Great README', [
-      h('Essential Sections'),
-      numbered(['Project Title and Description', 'Screenshot — show, do not just tell', 'Features list', 'Tech Stack', 'Live Link', 'Future Improvements', 'Author/Contact']),
-      divider(),
-      h('Markdown Basics'),
-      code('# Heading 1\n## Heading 2\n**bold** *italic*\n- bullet point\n[Link](https://url.com)\n![Image](image-url.jpg)', 'markdown'),
-      callout('GitHub automatically renders .md files as formatted documents.', 'info'),
-    ], 'Explain Markdown live. Show how it renders on GitHub.', 20),
-    makeBlock(sid, 2, 'demo', 'Write README with Claude', [
-      h('Live Demo: Professional README'),
-      numbered(['Create README.md in your portfolio folder', 'Prompt Claude: "Write a professional README.md for my personal portfolio website. Include: title, description, screenshot section, features, tech stack (HTML, CSS, VS Code, Claude AI), live link section, and contact info. Use Markdown."', 'Paste the output into README.md', 'Add your screenshot and actual live link', 'Push to GitHub and verify it renders']),
-      callout('A README with a screenshot gets 10x more attention than one without.', 'tip'),
-    ], 'Build this live. Show the markdown rendering on GitHub.', 25),
-    makeBlock(sid, 3, 'activity', 'Write README and Final Push', [
-      h('Activity: Complete Documentation and GitHub Push'),
-      bullets(['Write a complete README.md with all sections', 'Take a screenshot of your portfolio and add it', 'Review all your code — fix any TODO notes', 'Push everything to GitHub', 'Verify README renders correctly', 'Make your repository public if it is private']),
-      callout('This is your last chance to fix anything before deployment tomorrow.', 'warning'),
-    ], 'Check every student\'s GitHub repo. README rendering issues are common.', 30,
-    { activity_data: activity('Write README and Final Push', 'Write a professional README and push your complete portfolio to GitHub.', 30, 'Check that READMEs render correctly. Ensure repos are public. Verify all files are present.', 'Every student has a complete portfolio on GitHub with a professional README.') }),
-    makeBlock(sid, 4, 'quiz', 'Documentation Quiz', [], 'Check README understanding.', 5,
-    { quiz_data: mcq('What is the purpose of a README file?', [
-      { text: 'To store secret API keys' },
-      { text: 'To document what the project is, how to use it, and how to contribute', correct: true },
-      { text: 'To list all the bugs in the project' },
-      { text: 'To replace the need for comments in code' },
-    ], 'The README is the front door of your repository. A good README is the difference between a project people use and one they ignore.') }),
-    makeBlock(sid, 5, 'faq', 'README and GitHub FAQs', [], 'Common documentation questions.', 5,
-    { faq_items: faqs([
-      { q: 'Should my README be super detailed or brief?', a: 'Brief but complete. Cover the essentials in 30 seconds of reading.' },
-      { q: 'What if I do not have a live link yet?', a: 'Add a placeholder: "Live link coming soon". Update it after deployment tomorrow.' },
-    ]) }),
-    makeBlock(sid, 6, 'wrapup', 'Day 18 Wrap-Up', [
-      h('Pre-Deployment Checklist'),
-      bullets(['All files on GitHub', 'README complete with screenshot', 'Repository is public', 'No broken links or missing images']),
-      callout('Tomorrow: Deployment on Cloudflare Pages. Your portfolio goes live.', 'info'),
-    ], 'Make sure everyone is ready. No one should be blocked tomorrow by GitHub issues.', 10),
-  ]
-}
-
-// ─── DAY 19 ───────────────────────────────────────────────────────────────────
-function day19Blocks(): Block[] {
-  const sid = S[18]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 19 — Deployment: Go Live on Cloudflare Pages', [
-      h('Day 19 — Deployment: Go Live on Cloudflare Pages'),
-      p('Today your portfolio becomes a real website with a real URL that anyone in the world can visit.'),
-      bullets(['What deployment means', 'Cloudflare Pages overview', 'Connect GitHub to Cloudflare', 'Your site goes live']),
-      callout('After today, you can share your portfolio on LinkedIn and your CV. This is real.', 'tip'),
-    ], 'High energy day. Have the deployment flow ready to demonstrate.', 10),
-    makeBlock(sid, 1, 'concept', 'What is Deployment?', [
-      h('From Local to Live'),
-      p('Right now your portfolio only exists on your computer and GitHub. Deployment puts it on a server so anyone can access it via a URL.'),
-      bullets(['GitHub stores your code', 'Cloudflare Pages hosts your website', 'Every push to GitHub auto-updates your site', 'You get a free .pages.dev URL']),
-      divider(),
-      h('Why Cloudflare Pages?'),
-      bullets(['Free for personal projects', 'Automatic HTTPS', 'Fast global CDN', 'Auto-deployment from GitHub', 'Zero configuration for static sites']),
-    ], 'Explain the deployment pipeline clearly. Students often confuse GitHub with hosting.', 20),
-    makeBlock(sid, 2, 'demo', 'Deploy to Cloudflare Pages', [
-      h('Live Demo: Full Deployment Walkthrough'),
-      numbered(['Go to pages.cloudflare.com and create a free account', 'Click "Create a project" > "Connect to Git"', 'Authorize Cloudflare to access your GitHub', 'Select your portfolio repository', 'Framework preset: None (static site)', 'Build command: leave empty', 'Build output directory: / (root)', 'Click "Save and Deploy"', 'Wait 1-2 minutes — watch the build logs', 'Site goes live! Click "Visit site"', 'Share the URL: yourname.pages.dev']),
-      callout('From now on, every push to GitHub automatically updates your live site. This is continuous deployment.', 'tip'),
-    ], 'Do this live from start to finish. Let students see the entire process.', 30),
-    makeBlock(sid, 3, 'activity', 'Deploy Your Portfolio', [
-      h('Activity: Go Live'),
-      numbered(['Create a Cloudflare Pages account', 'Connect your GitHub account', 'Deploy your portfolio repository', 'Wait for the build to complete', 'Visit your live site and test everything', 'Share your live URL in the class group chat']),
-      callout('If deployment fails, check the build logs. Most common issue: wrong build directory or missing index.html.', 'warning'),
-    ], 'Be ready to debug deployment issues. Common problems: repo not public, wrong build settings.', 25,
-    { activity_data: activity('Deploy Your Portfolio', 'Deploy your portfolio to Cloudflare Pages and share your live URL.', 25, 'Help with deployment errors. Verify each site goes live. Collect all live URLs.', 'Every student has a live portfolio accessible via a public URL.') }),
-    makeBlock(sid, 4, 'quiz', 'Deployment Quiz', [], 'Check deployment understanding.', 5,
-    { quiz_data: mcq('What happens when you push new code to GitHub after deploying to Cloudflare Pages?', [
-      { text: 'Nothing — you need to redeploy manually' },
-      { text: 'Cloudflare automatically rebuilds and updates your live site', correct: true },
-      { text: 'Your site goes offline until you click Deploy again' },
-      { text: 'GitHub sends you an email asking permission to deploy' },
-    ], 'Cloudflare Pages watches your GitHub repo. Every push triggers an automatic rebuild and deployment.') }),
-    makeBlock(sid, 5, 'faq', 'Deployment FAQs', [], 'Common deployment questions.', 5,
-    { faq_items: faqs([
-      { q: 'Can I use my own domain name?', a: 'Yes. You can buy a domain and connect it to Cloudflare Pages. Optional and not covered in this course.' },
-      { q: 'How much does Cloudflare Pages cost?', a: 'The free tier is generous: unlimited sites, unlimited bandwidth for personal projects.' },
-    ]) }),
-    makeBlock(sid, 6, 'wrapup', 'You Are Live on the Internet', [
-      h('Your Portfolio is Now a Real Website'),
-      bullets(['Deployed to Cloudflare Pages', 'Continuous deployment from GitHub', 'Public URL you can share']),
-      divider(),
-      h('Next Steps'),
-      bullets(['Add your portfolio URL to your LinkedIn profile', 'Add it to your CV', 'Test it on different devices and browsers']),
-      callout('Tomorrow: Demo Day prep. You will present your portfolio to the group.', 'info'),
-    ], 'Take a class screenshot with everyone\'s portfolio URLs visible.', 10),
-  ]
-}
-
-// ─── DAY 20 ───────────────────────────────────────────────────────────────────
-function day20Blocks(): Block[] {
-  const sid = S[19]
-  return [
-    makeBlock(sid, 0, 'intro', 'Day 20 — Demo Day Prep: Rehearse Your Presentation', [
-      h('Day 20 — Demo Day Prep: Rehearse Your Presentation'),
-      p('Tomorrow is Demo Day. Today you prepare a 3-minute presentation that showcases your work and your growth.'),
-      bullets(['Structuring a 3-minute demo', 'What to show and what to skip', 'Handling questions', 'Practice presentations']),
-      callout('Public speaking is a skill. Practice is what makes it easier.', 'tip'),
-    ], 'Set up the room for presentations. Everyone will present today as practice for tomorrow.', 10),
-    makeBlock(sid, 1, 'concept', 'The 3-Minute Demo Structure', [
-      h('What to Cover in 3 Minutes'),
-      numbered(['Introduction (15 sec): Your name, background, why you joined', 'The Journey (30 sec): What you learned, hardest part, biggest surprise', 'The Portfolio (90 sec): Walk through your live site', 'The Tech (30 sec): What you built it with', 'What is Next (15 sec): Where you go from here']),
-      callout('3 minutes goes fast. Practice with a timer. Cut anything that does not add value.', 'warning'),
-      divider(),
-      h('Demo Tips'),
-      bullets(['Open your live site before you start talking', 'Scroll slowly — give people time to see', 'Be proud but honest about what you are still learning', 'Smile. Breathe. This is a celebration, not a test.']),
-    ], 'Show an example 3-minute demo. Time it. Let students see what 3 minutes looks like.', 20),
-    makeBlock(sid, 2, 'demo', 'Handling Questions', [
-      h('Common Questions and How to Answer'),
-      bullets(['"How long did this take?" — "21 days, 2 hours per day"', '"Did you write all the code yourself?" — "I used Claude AI to help generate code, but I customised and understood everything"', '"What was the hardest part?" — Be honest', '"What would you build next?" — Have an answer ready']),
-      divider(),
-      p('It is okay to say "I do not know, but I know how to find out." This is an honest, professional answer.'),
-    ], 'Role-play some Q&A scenarios. Let students practice answering unexpected questions.', 15),
-    makeBlock(sid, 3, 'activity', 'Full Rehearsal', [
-      h('Activity: Practice Presentations'),
-      p('Everyone presents their 3-minute demo to the class.'),
-      numbered(['Present in order', 'Hard stop at 3 minutes', 'Class asks 1-2 questions after each', 'Trainer gives specific feedback', 'Note what to improve for tomorrow']),
-      callout('This is practice. Mistakes here are good — they will not happen tomorrow.', 'info'),
-    ], 'Run this like the real Demo Day. Strict timing. Encourage applause after each presentation.', 50,
-    { activity_data: activity('Full Rehearsal', 'Each student presents their 3-minute demo and receives feedback.', 50, 'Time strictly. Give specific feedback. Note who needs extra support tomorrow.', 'Every student has rehearsed their presentation and knows what to improve for Demo Day.') }),
-    makeBlock(sid, 4, 'quiz', 'Presentation Readiness Check', [], 'Quick self-assessment.', 5,
-    { quiz_data: trueFalse('In a 3-minute demo, you should spend most of the time explaining how the code works line by line.', false, 'False. In 3 minutes, focus on the big picture: what you built, why it matters, what you learned. Keep it high-level and engaging.') }),
-    makeBlock(sid, 5, 'faq', 'Demo Day Prep FAQs', [], 'Common presentation questions.', 5,
-    { faq_items: faqs([
-      { q: 'What if I freeze or forget what to say?', a: 'Have notes on your phone or paper. Take a breath, refer to your notes, continue. No one will judge you.' },
-      { q: 'Should I memorise my presentation word-for-word?', a: 'No. Know your structure and key points, speak naturally. Memorised presentations sound robotic.' },
-      { q: 'What if my portfolio is not perfect?', a: 'No one expects perfection. Show what you built, acknowledge what you would improve.' },
-    ]) }),
-    makeBlock(sid, 6, 'wrapup', 'Demo Day Prep Complete', [
-      h('You Are Ready for Demo Day'),
-      bullets(['3-minute structure practiced', 'Q&A skills rehearsed', 'Feedback received and noted']),
+      bullets(['Sprint execution rules', 'Connecting navigation to sections with anchor links', 'Building remaining features with Claude', 'Debugging checklist after each feature']),
       divider(),
       h('Tonight'),
-      bullets(['Review your presentation one more time', 'Test your live site on the device you will use tomorrow', 'Get good sleep — tomorrow is your moment']),
-      callout('Tomorrow: DEMO DAY. Presentations, certificates, celebration.', 'tip'),
-    ], 'End with encouragement. Students are nervous and excited. Reassure them they are ready.', 10),
+      p('Review your site end-to-end. Click every link, test every form, check every button. Write down anything that feels broken or incomplete. Tomorrow is your last chance to fix it.'),
+      callout('Tomorrow: Testing, Accessibility & Polish. Quality day — no new features.', 'info'),
+    ], 'Students should have a complete, connected site by end of today. Celebrate the milestone. Tomorrow is about quality, not quantity.', 10),
   ]
 }
 
-// ─── DAY 21 ───────────────────────────────────────────────────────────────────
-function day21Blocks(): Block[] {
-  const sid = S[20]
+// ─── DAY 13: Testing, Accessibility & Polish ─────────────────────────────────
+function day13(): Block[] {
+  const sid = S[12]
   return [
-    makeBlock(sid, 0, 'intro', 'DEMO DAY — Live Presentations + Certificates', [
-      h('DEMO DAY — This Is Your Moment'),
-      p('You started 21 days ago with zero coding experience. Today you present your work to the world.'),
-      bullets(['Final presentations', 'Audience Q&A', 'Certificates of completion', 'Celebration and next steps']),
-      callout('Today is about celebration. You did it. Be proud.', 'tip'),
-    ], 'Set up the room for an event. Invite guests if possible. Make it special.', 15),
-    makeBlock(sid, 1, 'concept', 'What You Achieved in 21 Days', [
-      h('From Zero to Deployed'),
-      bullets(['Week 1: Computer basics, logic thinking, AI tools, prompt engineering', 'Week 2: HTML, CSS, VS Code, GitHub, spec writing, portfolio foundations', 'Week 3: Full portfolio build, polish, deployment, presentation skills']),
+    makeBlock(sid, 0, 'intro', 'Day 13 — Testing, Accessibility & Polish', [
+      h('Day 13 — Testing, Accessibility & Polish'),
+      p('Today is quality day. No new features. Only testing, fixing, and polishing. This is what separates a good project from a great one.'),
+      bullets(['End-to-end user journey testing', 'Accessibility basics (a11y)', 'Cross-browser testing', 'Lighthouse audit + pre-deployment checklist']),
+      callout('If you find a big bug today, fix it now. This is exactly why Day 13 exists.', 'warning'),
+    ], 'Set the tone: today is about quality, not quantity. Students who rush through testing regret it on Day 14 when their live site has obvious issues.', 10),
+
+    makeBlock(sid, 1, 'concept', 'End-to-End User Journey Testing', [
+      h('Step Into Your User\'s Shoes'),
+      numbered([
+        'Arrive at the site — What\'s the first impression?',
+        'Read the hero — Is the value clear in 5 seconds?',
+        'Navigate — Click every nav link. Do they all work?',
+        'Browse content — Scroll through all sections. Is anything broken?',
+        'Use the form — Submit with invalid data, then valid data.',
+        'Use all buttons — Every CTA, filter, and action button.',
+        'Check on mobile — Repeat the full journey on a phone screen.',
+      ]),
+      callout('Write down every issue you find. Fix them all before deployment.', 'warning'),
+    ], 'Do this journey test live on a student\'s site (with their permission). Find real issues together. This makes the process concrete.', 15),
+
+    makeBlock(sid, 2, 'concept', 'Accessibility Basics', [
+      h('Accessibility (a11y) — Your Site Works for Everyone'),
+      h('1. Alt text on all images'),
+      code('<!-- Bad -->\n<img src="hero.jpg">\n\n<!-- Good -->\n<img src="hero.jpg" alt="A group of students studying together in a library">', 'html'),
+      h('2. Form labels properly associated'),
+      code('<!-- Bad -->\n<p>Name</p>\n<input type="text">\n\n<!-- Good -->\n<label for="name">Name</label>\n<input type="text" id="name" name="name">', 'html'),
+      h('3. Semantic HTML'),
+      code('<!-- Bad (divs for everything) -->\n<div class="header">...</div>\n<div class="content">...</div>\n\n<!-- Good (semantic tags) -->\n<header>...</header>\n<main>...</main>\n<footer>...</footer>', 'html'),
+      callout('Accessibility audit prompt: "Review my HTML for accessibility issues. Check for: missing alt text, unlabelled form inputs, missing ARIA labels, poor heading hierarchy. Here\'s the code: [paste HTML]"', 'tip'),
+    ], 'Accessibility is a professional standard. It improves Lighthouse scores and teaches habits that matter in real jobs.', 20),
+
+    makeBlock(sid, 3, 'concept', 'Lighthouse Audit + Pre-Deployment Checklist', [
+      h('Lighthouse Score Targets'),
+      bullets(['Performance: 70+', 'Accessibility: 90+', 'Best Practices: 80+', 'SEO: 80+']),
+      p('In Chrome DevTools → Lighthouse tab → Select "Mobile" → Generate Report.'),
       divider(),
-      h('Skills You Now Have'),
-      bullets(['HTML and CSS fundamentals', 'Using AI tools professionally', 'Version control with Git and GitHub', 'Deployment and hosting', 'Project planning and documentation', 'Public presentation skills']),
-      callout('These skills are transferable to any development path you choose next.', 'info'),
-    ], 'This recap is important. Make the learning explicit. Students often underestimate how much they have learned.', 20),
-    makeBlock(sid, 2, 'demo', 'Trainer Reflection', [
-      h('A Word from the Trainer'),
-      bullets(['Highlight individual growth moments', 'Share memorable moments from the course', 'Acknowledge the effort everyone put in', 'Express pride in the group']),
-      callout('This is your chance as a trainer to acknowledge each student personally. Make it count.', 'tip'),
-    ], 'Keep this short but heartfelt. Students remember this moment.', 10),
-    makeBlock(sid, 3, 'activity', 'Final Presentations', [
-      h('Activity: Demo Day Presentations'),
-      p('Each student presents their portfolio to the audience. 3 minutes per person plus Q&A.'),
-      numbered(['Student shares their screen', 'Delivers 3-minute presentation', 'Audience asks 1-2 questions', 'Applause and transition to next presenter']),
-      callout('This is the culmination of 21 days. Celebrate every presentation. Applaud loudly.', 'tip'),
-    ], 'Plan for 5-7 minutes per student including setup and Q&A. Keep energy high throughout.', 90,
-    { activity_data: activity('Final Presentations', 'Each student presents their portfolio in a formal Demo Day setting.', 90, 'Keep time loosely but keep moving. Encourage audience engagement. Celebrate every presentation.', 'Every student has presented their portfolio to an audience and received recognition.') }),
-    makeBlock(sid, 4, 'quiz', 'Final Reflection', [], 'A reflection moment, not a test.', 10,
-    { quiz_data: mcq('What is the most important thing you learned in the last 21 days?', [
-      { text: 'HTML and CSS syntax' },
-      { text: 'How to use AI tools' },
-      { text: 'That I can learn hard things if I stick with them', correct: true },
-      { text: 'How to deploy a website' },
-    ], 'The technical skills matter, but the real win is the confidence that comes from completing something hard. You proved to yourself that you can learn anything.') }),
-    makeBlock(sid, 5, 'faq', 'What Comes Next?', [], 'Post-course guidance.', 15,
+      h('Pre-Deployment Checklist'),
+      bullets([
+        'Code Quality: No Console errors, no TODO comments, no unused CSS/JS, all files properly linked',
+        'Content: No Lorem ipsum placeholder text, no broken images, all links work, favicon present',
+        'Responsive: Looks good at 320px, 768px, and 1440px',
+        'Accessibility: All images have alt text, all form inputs have labels, site navigable by keyboard',
+        'Performance: No image files over 500KB, CSS and JS files linked correctly',
+      ]),
+      callout('SEO basics prompt: "Add proper SEO meta tags to my HTML head section for a site about [your project description]. Include title, description, and Open Graph tags."', 'tip'),
+    ], 'Run Lighthouse on a student\'s site live. Show what the scores mean and how to improve them.', 15),
+
+    makeBlock(sid, 4, 'activity', 'Full Testing & Polish Session', [
+      h('Hands-on Task: Deployment-Ready Site'),
+      numbered([
+        'User journey test (30 mins): Follow every step in the journey list above. Document all issues.',
+        'Fix all found issues (20 mins): Use Claude for each specific fix.',
+        'Accessibility audit (20 mins): Run Claude\'s accessibility review on your HTML. Apply all suggestions.',
+        'Keyboard test (10 mins): Tab through your entire site. Fix any unreachable elements.',
+        'Cross-browser check (15 mins): Open in Chrome, Firefox, and Safari. Note differences.',
+        'Content proofread (15 mins): Read every word. Fix spelling, grammar, placeholder text.',
+        'Lighthouse audit (15 mins): Generate report on desktop and mobile. Fix top 3 issues.',
+        'Pre-deployment checklist: Check every item above.',
+        'Final commit: "Day 13: Testing complete, accessibility fixes, pre-deployment polish"',
+      ]),
+    ], 'Walk around with your phone. Test each student\'s site on a real device. Real devices reveal issues that DevTools misses.', 90,
+    { activity_data: activity('Full Testing & Polish Session', 'User journey test, accessibility audit, cross-browser check, content proofread, Lighthouse audit, pre-deployment checklist.', 90, 'Walk around with your phone. Test on real devices. Help fix any blocking issues before deployment.', 'Full user journey tested, Lighthouse Accessibility 85+, no placeholder text, all images have alt text, no Console errors, pre-deployment checklist complete, committed to Github.') }),
+
+    makeBlock(sid, 5, 'quiz', 'Day 13 Knowledge Check', [], 'Testing and accessibility check.', 5,
+    { quiz_data: mcq('What does "alt text" on an image do?', [
+      { text: 'Changes image colour' },
+      { text: 'Describes the image for screen readers and when the image fails to load', correct: true },
+      { text: 'Makes the image load faster' },
+      { text: 'Adds a caption below the image' },
+    ], 'Alt text serves two purposes: it describes the image to screen readers (used by visually impaired users) and it displays as text when the image fails to load. Both are important for accessibility and user experience.') }),
+
+    makeBlock(sid, 6, 'faq', 'Day 13 FAQs', [], 'Common testing questions.', 5,
     { faq_items: faqs([
-      { q: 'What should I learn next?', a: 'JavaScript is the natural next step for interactivity. Or dive deeper into CSS. Follow your curiosity.' },
-      { q: 'How do I keep improving my portfolio?', a: 'Add more projects. Refine the design. Get feedback from developers you admire. Your portfolio is never done.' },
-      { q: 'Can I get a job with just HTML and CSS?', a: 'Entry-level jobs usually require JavaScript too, but HTML/CSS skills make you valuable for content roles and freelance work.' },
-      { q: 'What if I want to keep learning with CodeShala?', a: 'Ask the trainer about next courses: JavaScript, React, backend development.' },
+      { q: 'What if my Lighthouse performance score is very low?', a: 'Ask Claude: "My Lighthouse performance score is [X]. Here\'s my setup: [describe images, fonts, scripts]. Give me the top 5 improvements I can make without changing functionality."' },
+      { q: 'Do I really need to test in multiple browsers?', a: 'At minimum, Chrome and one other. Safari is especially important if your audience includes iPhone users.' },
+      { q: 'How do I add a favicon?', a: 'Ask Claude: "How do I add a simple emoji favicon to my HTML? I want to use the [emoji] emoji." It\'s a one-line addition to your HTML head.' },
+      { q: 'Is accessibility really that important for a learning project?', a: 'Yes! It\'s a professional standard, it improves your Lighthouse score, and it teaches habits that matter in real jobs.' },
+      { q: 'What if I find a big bug on Day 13?', a: 'Fix it now. This is exactly why Day 13 exists. Don\'t skip testing to save time — you\'ll regret it on Day 14.' },
     ]) }),
-    makeBlock(sid, 6, 'wrapup', 'Certificates and Celebration', [
-      h('You Did It — Certificate Time'),
-      p('Each student receives their certificate of completion for the 21-Day Summer Crash Course.'),
+
+    makeBlock(sid, 7, 'wrapup', 'Day 13 Wrap-Up', [
+      h('What We Covered Today'),
+      bullets(['End-to-end user journey testing', 'Accessibility: alt text, form labels, semantic HTML', 'Lighthouse audit and score targets', 'Pre-deployment checklist']),
       divider(),
-      h('What Now?'),
-      bullets(['Update your LinkedIn with your new skills and portfolio link', 'Share your portfolio on social media', 'Keep building — the learning does not stop here', 'Help others who are where you were 21 days ago']),
+      h('Tonight'),
+      p('Your site should be deployment-ready. Do one final review. Open it on your phone. Show it to someone. If anything feels wrong, fix it tonight.'),
+      callout('Tomorrow: DEPLOYMENT DAY. Your site goes live on the internet. Come ready to celebrate.', 'tip'),
+    ], 'Students should feel confident and proud. Tomorrow is the culmination of 14 days of work. Build excitement.', 10),
+  ]
+}
+
+// ─── DAY 14: Vercel Deployment & Launch ──────────────────────────────────────
+function day14(): Block[] {
+  const sid = S[13]
+  return [
+    makeBlock(sid, 0, 'intro', 'Day 14 — Vercel Deployment & Launch', [
+      h('Day 14 — DEPLOYMENT DAY'),
+      p('Today your project becomes a real website with a real URL that anyone in the world can visit.'),
+      bullets(['Deploy to Vercel — step by step', 'Test the live URL thoroughly', 'Continuous deployment in action', 'Share your work with the world']),
+      callout('After today, you can share your site on LinkedIn, your CV, and with potential employers. This is real.', 'tip'),
+    ], 'High energy day. Have the deployment flow ready to demonstrate. Set up the room for a celebration. This is the finish line.', 15),
+
+    makeBlock(sid, 1, 'concept', 'What is Vercel + How It Works', [
+      h('What is Vercel?'),
+      p('Vercel is a cloud platform that takes your code from Github and makes it available on the internet instantly.'),
+      bullets(['Free for personal projects', 'Automatic HTTPS (secure connection)', 'Auto-deploys when you push to Github', 'Global CDN (fast loading worldwide)', 'Custom domain support']),
       divider(),
-      h('Final Words'),
-      p('You came in with zero experience. You leave with a live website, real skills, and proof that you can learn anything.'),
-      callout('Congratulations, developers. You earned this.', 'tip'),
-    ], 'Hand out certificates. Take photos. Celebrate. End on high energy. This moment matters.', 20),
+      h('How Vercel Works with Github'),
+      numbered([
+        'You push code to Github',
+        'Vercel detects the change automatically',
+        'Vercel builds and deploys your site',
+        'Live URL updated within 30 seconds',
+      ]),
+      callout('Every future git push automatically updates your live site. This is continuous deployment — a professional workflow.', 'info'),
+    ], 'Explain the Github → Vercel connection clearly. Students often confuse Github (code storage) with Vercel (hosting). They work together.', 15),
+
+    makeBlock(sid, 2, 'demo', 'Deploy to Vercel — Step by Step', [
+      h('Live Demo: Full Deployment Walkthrough'),
+      numbered([
+        'Go to vercel.com — click "Sign Up" and choose "Continue with Github"',
+        'Authorise Vercel to access your Github',
+        'Click "Add New" → "Project"',
+        'Find your project repository and click "Import"',
+        'Framework Preset: Select "Other" (plain HTML/CSS/JS)',
+        'Root Directory: Leave as is',
+        'Build & Output Settings: Leave as defaults',
+        'Click "Deploy"',
+        'Watch the build log — takes 30-60 seconds',
+        'Confetti animation + your live URL! 🎉',
+        'Your URL: https://your-project-name.vercel.app',
+      ]),
+      callout('If something breaks on the live site: open DevTools on the live URL — errors show the same way as locally. Most common issue: wrong file path (case-sensitive on Linux servers).', 'warning'),
+    ], 'Do this live from start to finish. Let students see the entire process including the build logs and the final live site. The confetti moment is always special.', 30),
+
+    makeBlock(sid, 3, 'activity', 'Deploy Your Site + Test + Share', [
+      h('Hands-on Task: Your Site Live on the Internet'),
+      numbered([
+        'Sign in to Vercel with Github',
+        'Import your project repository',
+        'Configure: Framework = Other, leave all other settings as default',
+        'Click Deploy and watch the build log',
+        'Open your live URL and test everything:',
+        '  - Site loads correctly',
+        '  - All images appear',
+        '  - CSS is applied',
+        '  - JavaScript works (navigation toggle, form, etc.)',
+        '  - Form submission works on the live site',
+        '  - Mobile looks correct (test on your actual phone)',
+        'Test continuous deployment: make a small change locally, commit, push, watch Vercel auto-update',
+        'Share your live URL in the class group chat',
+        'Post on LinkedIn: "I built and deployed my first website in 14 days using no-code tools!"',
+      ]),
+    ], 'Be ready to debug deployment issues. Common problems: wrong file paths (case-sensitive), images not in Github repo, fonts not loading. Help each student get their site live.', 60,
+    { activity_data: activity('Deploy Your Site + Test + Share', 'Deploy to Vercel, test the live URL thoroughly, test continuous deployment, share with the world.', 60, 'Help with deployment errors. Verify each site goes live. Collect all live URLs. Celebrate every successful deployment.', 'Every student has a live site accessible via a public URL, tested on mobile, and shared with the class.') }),
+
+    makeBlock(sid, 4, 'quiz', 'Day 14 Knowledge Check', [], 'Deployment check.', 5,
+    { quiz_data: mcq('What happens when you push new code to Github after deploying to Vercel?', [
+      { text: 'Nothing — you need to redeploy manually' },
+      { text: 'Vercel automatically rebuilds and updates your live site', correct: true },
+      { text: 'Your site goes offline until you click Deploy again' },
+      { text: 'Github sends you an email asking permission to deploy' },
+    ], 'Vercel watches your Github repository. Every push triggers an automatic rebuild and deployment. This is continuous deployment — a professional workflow used by companies worldwide.') }),
+
+    makeBlock(sid, 5, 'faq', 'Day 14 FAQs', [], 'Common deployment questions.', 5,
+    { faq_items: faqs([
+      { q: 'Can I use my own domain name instead of .vercel.app?', a: 'Yes. You can buy a domain and connect it to Vercel. In your Vercel project → Settings → Domains. Optional and not required for this course.' },
+      { q: 'What if my site looks different on Vercel than locally?', a: 'Most common cause: file paths are case-sensitive on Vercel\'s Linux servers. Check that your file names match exactly (styles.css not Styles.css).' },
+      { q: 'How much does Vercel cost?', a: 'The free tier is generous: unlimited sites, unlimited bandwidth for personal projects. You will not hit the limits for a portfolio or small project.' },
+      { q: 'Can I deploy something other than a portfolio?', a: 'Yes. Any static website (HTML/CSS/JS) can be deployed this way. Blogs, landing pages, documentation sites — all work.' },
+      { q: 'What do I do after this course?', a: 'Keep building! Add more projects to your portfolio. Learn JavaScript more deeply. Explore React or Next.js. Share your work on LinkedIn. The skills you have now are real and valuable.' },
+    ]) }),
+
+    makeBlock(sid, 6, 'wrapup', 'Course Complete — You Did It!', [
+      h('14 Days. From Zero to Deployed.'),
+      bullets([
+        'Week 1: Tools, prompting, web basics, project planning, version control',
+        'Week 2: Navigation, forms, content sections, styling, debugging',
+        'Week 3: Sprint planning, full build, testing, deployment',
+      ]),
+      divider(),
+      h('What You Now Have'),
+      bullets([
+        'A live website with a real URL',
+        'A Github profile with real code',
+        'Skills in Claude AI, VS Code, Github, and Vercel',
+        'The ability to build and deploy any static website',
+        'A foundation to keep learning',
+      ]),
+      divider(),
+      h('What\'s Next?'),
+      bullets([
+        'Add your live URL to your LinkedIn profile and CV',
+        'Keep building — add more projects to your portfolio',
+        'Learn JavaScript more deeply',
+        'Explore React, Next.js, or backend development',
+        'Help others who are where you were 14 days ago',
+      ]),
+      callout('You came in with zero experience. You leave with a live product, real skills, and proof that you can build anything. Congratulations.', 'tip'),
+    ], 'Hand out certificates. Take a class photo. Celebrate loudly. This moment matters. Students have earned it.', 20),
   ]
 }
